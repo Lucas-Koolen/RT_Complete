@@ -1,10 +1,12 @@
 import sys
+import cv2
 import serial
 import time
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QLineEdit, QTextEdit, QGroupBox, QDialog
 )
+from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import QTimer, Qt
 
 class RotationDashboard(QWidget):
@@ -144,6 +146,27 @@ class RotationDashboard(QWidget):
 
     def log(self, message):
         self.log_output.append(message)
+
+    # this should be in a separate tab in the UI
+    def update_frame(self, frame):
+        length, width, height, matched_id, match_ok, log, frame_with_overlay = detect_dimensions(frame)
+
+        img_rgb = cv2.cvtColor(frame_with_overlay, cv2.COLOR_BGR2RGB)
+        h, w, ch = img_rgb.shape
+        bytes_per_line = ch * w
+        qt_image = QImage(img_rgb.data, w, h, bytes_per_line, QImage.Format_RGB888)
+        pixmap = QPixmap.fromImage(qt_image).scaled(self.image_label.width(), self.image_label.height(), Qt.KeepAspectRatio)
+        self.image_label.setPixmap(pixmap)
+
+        self.debug_label.setText(f"Debug: {log}")
+        self.lbh_label.setText(f"L × B × H: {length:.1f} × {width:.1f} × {height:.1f} mm")
+        self.lbh_label.setStyleSheet("background-color: #339933; padding: 10px;" if match_ok else "background-color: #cc3333; padding: 10px;")
+        if matched_id:
+            self.match_label.setText(f"Match: {matched_id}")
+            self.match_label.setStyleSheet("background-color: #339933; padding: 10px;")
+        else:
+            self.match_label.setText("Match: geen")
+            self.match_label.setStyleSheet("background-color: #cc3333; padding: 10px;")
 
     def update_height(self, raw_height):
         height = self.HEIGHT_SCALE * raw_height + self.HEIGHT_OFFSET
