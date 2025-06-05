@@ -20,3 +20,4 @@ def update_height(raw_height):
         average_height = round(
             sum(_raw_height_buffer) / len(_raw_height_buffer), 1
         )
+        return average_height
