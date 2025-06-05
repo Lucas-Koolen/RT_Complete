@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import QTimer, Qt
 
-class UltraCalDashboard(QWidget):
+class RotationDashboard(QWidget):
     def __init__(self):
         super().__init__()
         self.l2_position = None  # Tracks position of L2 (servo 4)
@@ -368,10 +368,3 @@ class UltraCalDashboard(QWidget):
 
         except Exception as e:
             self.log(f"FOUT: {e}")
-
-        
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = UltraCalDashboard()
-    window.show()
-    sys.exit(app.exec_())
