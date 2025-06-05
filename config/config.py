@@ -17,6 +17,9 @@ PIXEL_FORMAT = 0x02180014  # RGB8 Packed
 EXPOSURE_TIME = 15000.0
 GAIN = 10.0
 
+# Process scale factor to speed up detection
+PROCESS_SCALE = 0.5  # resize factor for processing frames
+
 # =============[ CAMERA CONFIG ]============
 MM_PER_PIXEL = 0.052  # mm per pixel (handmatig bepaald)
 MATCH_TOLERANCE = 0.10  # 10% afwijking
