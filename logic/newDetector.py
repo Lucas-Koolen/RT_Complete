@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import time
 from config.config import MM_PER_PIXEL
-from newDashboard import get_latest_height
+from logic.newHeightSensor import get_latest_height
 
 _last_dimensions = None
 _last_detected_time = 0

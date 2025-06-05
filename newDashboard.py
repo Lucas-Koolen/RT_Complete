@@ -19,6 +19,9 @@ from PyQt5.QtWidgets import (
     QTabWidget,
 )
 
+from logic.newDetector import detect_dimensions
+from logic import camera_module
+from logic.newHeightSensor import update_height
 
 # ------------------------------------------------------------------------------
 # 1) First dashboard: “AVØA Realtime Dashboard”
@@ -151,15 +154,6 @@ class UltraCalibrationDashboard(QWidget):
         self.status_timer = QTimer()
         self.status_timer.timeout.connect(self.update_from_serial)
         self.status_timer.start(200)
-
-        self.average_height = None
-        self._raw_height_buffer = []
-        self.MAX_BUFFER_SIZE = 10
-
-        # Nieuwe kalibratiefactoren (gebaseerd op jouw metingen)
-        self.HEIGHT_SCALE = -1.305
-        self.HEIGHT_OFFSET = 382.4
-        self.HEIGHT_MAX_VALID = 100  # mm
 
     def setup_stylesheet(self):
         self.setStyleSheet(
@@ -297,17 +291,6 @@ class UltraCalibrationDashboard(QWidget):
 
     def log(self, message):
         self.log_output.append(message)
-
-    def update_height(self, raw_height):
-        height = self.HEIGHT_SCALE * raw_height + self.HEIGHT_OFFSET
-        if 0 <= height <= self.HEIGHT_MAX_VALID:
-            self._raw_height_buffer.append(height)
-            if len(self._raw_height_buffer) > self.MAX_BUFFER_SIZE:
-                self._raw_height_buffer.pop(0)
-            self.average_height = round(
-                sum(self._raw_height_buffer) / len(self._raw_height_buffer), 1
-            )
-            self.height_label.setText(f"Height: {self.average_height} mm")
 
     def send_command(self, cmd):
         try:
@@ -560,7 +543,7 @@ class UltraCalibrationDashboard(QWidget):
                 elif line.startswith("HT "):
                     try:
                         raw_height = int(line.split()[1])
-                        self.update_height(raw_height)
+                        update_height(raw_height)
                     except ValueError:
                         self.log("FOUT: Ongeldige hoogte waarde ontvangen")
 
@@ -569,9 +552,6 @@ class UltraCalibrationDashboard(QWidget):
 
         except Exception as e:
             self.log(f"FOUT: {e}")
-
-    def get_latest_height(self):
-        return self.average_height
 
 
 # ------------------------------------------------------------------------------
