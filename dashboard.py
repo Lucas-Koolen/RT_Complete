@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import QTimer, Qt
+import time
 
 from logic.serial_comm import SerialCommunicator
 from logic.db_connector import DatabaseConnector

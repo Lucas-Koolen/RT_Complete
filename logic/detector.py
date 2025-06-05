@@ -2,27 +2,21 @@
 
 import cv2
 import numpy as np
-from hikvision_sdk.MvCameraControl_class import MvCamera
-from hikvision_sdk.MvImport import *
 from config.config import PIXEL_TO_MM
 
 class CameraDetector:
     def __init__(self):
-        self.cam = MvCamera()
-        device_list = self.cam.EnumDevices()
-        if not device_list:
+        self.cap = cv2.VideoCapture(0)
+        if not self.cap.isOpened():
             print("[CAMERA] Geen camera gevonden.")
-            self.cam = None
-        else:
-            self.cam.Open(device_list[0])
-            self.cam.StartGrabbing()
+            self.cap = None
 
     def get_frame(self):
-        if not self.cam:
+        if not self.cap:
             return None, None
 
-        data, frame = self.cam.GetFrameWithRGB()
-        if frame is None:
+        ret, frame = self.cap.read()
+        if not ret:
             return None, None
 
         processed = self.process_frame(frame.copy())
