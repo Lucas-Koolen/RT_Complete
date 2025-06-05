@@ -22,6 +22,7 @@ from PyQt5.QtWidgets import (
 from logic.newDetector import detect_dimensions
 from logic import camera_module
 from logic.newHeightSensor import update_height
+from logic.shape import Shape
 from config.config import SERIAL_PORT, BAUD_RATE
 
 # ------------------------------------------------------------------------------
@@ -87,7 +88,7 @@ class RealtimeDashboard(QWidget):
         """
 
         # ─── Dimension detection; overlay, etc. ─────────────────────────────────
-        length, width, height, matched_id, match_ok, log, frame_with_overlay = detect_dimensions(
+        length, width, height, shape, matched_id, match_ok, log, frame_with_overlay = detect_dimensions(
             frame
         )
 
@@ -111,7 +112,7 @@ class RealtimeDashboard(QWidget):
         # ─── Update all labels ───────────────────────────────────────────────────
         self.debug_label.setText(f"Debug: {log}")
         self.lbh_label.setText(
-            f"L × B × H: {length:.1f} × {width:.1f} × {height:.1f} mm"
+            f"L × B × H: {length:.1f} × {width:.1f} × {height:.1f} mm Shape: {shape.shapeToString()}"
         )
         # Change background based on match_ok
         if match_ok:

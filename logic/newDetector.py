@@ -3,6 +3,7 @@ import numpy as np
 import time
 from config.config import MM_PER_PIXEL, PROCESS_SCALE
 from logic.newHeightSensor import get_latest_height
+from logic.shape import Shape
 
 # Global variables (make sure these are initialized somewhere in your module)
 _last_dimensions = None
@@ -79,7 +80,7 @@ def detect_dimensions(frame):
         # If we still have no dimensions, immediately return with a warning
         if not _last_dimensions:
             log = "⚠️ Geen geschikte rechthoek of cirkel gevonden"
-            return 0, 0, 0, None, False, log, frame
+            return 0, 0, 0, Shape.INVALID, None, False, log, frame
 
         # --- 4) If we did detect a rectangle, we could also attempt CIRCLE DETECTION ---
         #    (only if you care about circles; otherwise you can skip this entire block)
@@ -137,22 +138,26 @@ def detect_dimensions(frame):
             log = "⚠️ Geen hoogte gemeten"
             # We still return the original image with rectangles/circles drawn
             # For height=0, the return signature is (l, b, 0, None, False, log, orig)
-            return l, b, 0, None, False, log, orig
+            return l, b, 0, Shape.INVALID, None, False, log, orig
 
         h_mm = round(height, 1)
         matched_id, ok = None, False  # Placeholder: you can insert your own matching logic here
+
+        shape = Shape.BOX  # Default shape is box; change if you detect a circle
 
         # If you did detect a circle and want to report it, you could override l/b (optional)
         if circles:
             c = circles[0]
             # For example, you could display “Diameter: X mm” instead of length × breadth
             dia = round(2 * c["radius_mm"], 1)
+            shape = Shape.CYLINDER
+            l, b = dia, dia
             log = f"✅ Cirkel gedetecteerd: Diameter={dia:.1f} mm, H={h_mm:.1f} mm, match={matched_id or 'geen'}"
         else:
             log = f"✅ Rechthoek gedetecteerd: L={l:.1f} mm × B={b:.1f} mm, H={h_mm:.1f} mm, match={matched_id or 'geen'}"
 
-        return l, b, h_mm, matched_id, ok, log, orig
+        return l, b, h_mm, shape, matched_id, ok, log, orig
 
     except Exception as e:
         log = f"❌ Fout tijdens detectie: {e}"
-        return 0, 0, 0, None, False, log, frame
+        return 0, 0, 0, Shape.INVALID, None, False, log, frame
