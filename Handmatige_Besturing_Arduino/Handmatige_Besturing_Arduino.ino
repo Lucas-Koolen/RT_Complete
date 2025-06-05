@@ -1,7 +1,9 @@
 #include <Wire.h>
+#include <VL53L1X.h>
 #include <Adafruit_PWMServoDriver.h>
 
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
+VL53L1X sensor;
 
 // --- Stopwaarden per servo ---
 #define SERVO_STOP_DEFAULT  365 // standaard
@@ -32,16 +34,17 @@ int custom_pwm[9] = {
   SERVO_STOP_DEFAULT   // 8 - Reserve / toekomstig gebruik
 };
 
-
-
 String inputString = "";
 bool lastEndstop1 = false;
 bool lastEndstop2 = false;
 bool lastBeam1 = false;
 bool lastBeam2 = false;
 
+unsigned long lastHeightSendTime = 0;
+
 void setup() {
   Serial.begin(9600);
+  Wire.begin();
   pwm.begin();
   pwm.setPWMFreq(60);
 
@@ -55,6 +58,16 @@ void setup() {
   lastBeam1 = digitalRead(BEAM_SENSOR1_PIN) == LOW;
   lastBeam2 = digitalRead(BEAM_SENSOR2_PIN) == LOW;
 
+  sensor.setTimeout(500);
+  if (!sensor.init()) {
+    Serial.println("Sensor init mislukt!");
+    while (true);
+  }
+
+  sensor.setDistanceMode(VL53L1X::Long);
+  sensor.setMeasurementTimingBudget(50000);
+  sensor.startContinuous(50);
+
   Serial.println("READY");
 }
 
@@ -63,6 +76,17 @@ void loop() {
   checkEndstops();
   handleSerial();
   delay(50);
+}
+
+void updateHeight() {
+  if (millis() - lastHeightSendTime >= 500) {
+    uint16_t d = sensor.read();
+    if (!sensor.timeoutOccurred()) {
+      Serial.print("HT ");
+      Serial.println(d);
+    }
+    lastSendTime = millis();
+  }
 }
 
 void checkBeamSensors() {
