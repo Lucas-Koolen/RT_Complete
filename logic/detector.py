@@ -2,27 +2,62 @@
 
 import cv2
 import numpy as np
-from hikvision_sdk.MvCameraControl_class import MvCamera
-from hikvision_sdk.MvImport import *
 from config.config import PIXEL_TO_MM
+from hikvision_sdk.MvCameraControl_class import MvCamera
 
 class CameraDetector:
     def __init__(self):
-        self.cam = MvCamera()
-        device_list = self.cam.EnumDevices()
-        if not device_list:
-            print("[CAMERA] Geen camera gevonden.")
+        self.cam = None
+        self.cap = None
+
+        # Try initializing Hikvision SDK first
+        try:
+            self.cam = MvCamera()
+            device_list = self.cam.EnumDevices()
+            if device_list:
+                self.cam.Open(device_list[0])
+                self.cam.StartGrabbing()
+            else:
+                self.cam = None
+                print("[CAMERA] Geen Hikvision-camera gevonden.")
+        except Exception as exc:
+            print(f"[CAMERA] Hikvision SDK-fout: {exc}")
             self.cam = None
-        else:
-            self.cam.Open(device_list[0])
-            self.cam.StartGrabbing()
+
+        # Fallback to OpenCV when Hikvision is not available
+        if not self.cam:
+            self.cap = cv2.VideoCapture(0)
+            if self.cap.isOpened():
+                print("[CAMERA] OpenCV fallback geactiveerd.")
+            else:
+                print("[CAMERA] Geen camera gevonden.")
+                self.cap = None
 
     def get_frame(self):
-        if not self.cam:
+        # Try Hikvision first
+        if self.cam:
+            try:
+                data, frame = self.cam.GetFrameWithRGB()
+                if frame is not None:
+                    processed = self.process_frame(frame.copy())
+                    return processed["visual"], processed["dimensions"]
+            except Exception as exc:
+                print(f"[CAMERA] Hikvision framefout: {exc}")
+                self.cam = None
+                # initialize fallback if not yet active
+                if not self.cap:
+                    self.cap = cv2.VideoCapture(0)
+                    if self.cap.isOpened():
+                        print("[CAMERA] OpenCV fallback geactiveerd.")
+                    else:
+                        print("[CAMERA] Geen camera gevonden.")
+                        self.cap = None
+
+        if not self.cap:
             return None, None
 
-        data, frame = self.cam.GetFrameWithRGB()
-        if frame is None:
+        ret, frame = self.cap.read()
+        if not ret:
             return None, None
 
         processed = self.process_frame(frame.copy())
