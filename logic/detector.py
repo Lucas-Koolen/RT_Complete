@@ -75,7 +75,7 @@ class CameraDetector:
             if area > 10000:  # filter ruis
                 rect = cv2.minAreaRect(cnt)
                 box = cv2.boxPoints(rect)
-                box = np.int0(box)
+                box = np.int8(box)
                 w, h = rect[1]
                 if w > 0 and h > 0:
                     l_mm = max(w, h) * PIXEL_TO_MM
