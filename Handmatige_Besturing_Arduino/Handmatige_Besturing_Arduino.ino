@@ -72,6 +72,7 @@ void setup() {
 }
 
 void loop() {
+  updateHeight();
   checkBeamSensors();
   checkEndstops();
   handleSerial();
