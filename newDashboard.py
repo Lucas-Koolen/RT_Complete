@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import QTimer, Qt
 
 class RotationDashboard(QWidget):
+
     def __init__(self):
         super().__init__()
         self.l2_position = None  # Tracks position of L2 (servo 4)
@@ -30,6 +31,15 @@ class RotationDashboard(QWidget):
         self.status_timer = QTimer()
         self.status_timer.timeout.connect(self.update_from_serial)
         self.status_timer.start(200)
+
+        self.average_height = None
+        self._raw_height_buffer = []
+        self.MAX_BUFFER_SIZE = 10
+
+        # Nieuwe kalibratiefactoren (gebaseerd op jouw metingen)
+        self.HEIGHT_SCALE = -1.305
+        self.HEIGHT_OFFSET = 382.4
+        self.HEIGHT_MAX_VALID = 100  # mm
 
     def setup_stylesheet(self):
         self.setStyleSheet("""
@@ -134,6 +144,15 @@ class RotationDashboard(QWidget):
 
     def log(self, message):
         self.log_output.append(message)
+
+    def update_height(self, raw_height):
+        height = self.HEIGHT_SCALE * raw_height + self.HEIGHT_OFFSET
+
+        if 0 <= height <= self.HEIGHT_MAX_VALID:
+            self._raw_height_buffer.append(height)
+            if len(self._raw_height_buffer) > self.MAX_BUFFER:
+                self._raw_height_buffer.pop(0)
+            latest_height = round(sum(self._raw_height_buffer) / len(self._raw_height_buffer), 1)
 
     def send_command(self, cmd):
         try:
@@ -368,3 +387,6 @@ class RotationDashboard(QWidget):
 
         except Exception as e:
             self.log(f"FOUT: {e}")
+
+    def get_latest_height(self):
+        return self.average_height
