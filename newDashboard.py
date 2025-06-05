@@ -545,7 +545,15 @@ class UltraCalibrationDashboard(QWidget):
                 elif line.startswith("HT "):
                     try:
                         raw_height = int(line.split()[1])
-                        update_height(raw_height)
+                        height = update_height(raw_height)
+                        if height is not None:
+                            self.height_label.setText(f"Height: {height} mm")
+                            self.height_label.setProperty("active", True)
+                            self.height_label.setStyle(self.height_label.style())
+                        else:
+                            self.height_label.setText("Height: NULL")
+                            self.height_label.setProperty("active", False)
+                            self.height_label.setStyle(self.height_label.style())
                     except ValueError:
                         self.log("FOUT: Ongeldige hoogte waarde ontvangen")
 
