@@ -1,26 +1,144 @@
 import sys
-import cv2
-import serial
 import time
-from PyQt5.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QLineEdit, QTextEdit, QGroupBox, QDialog
-)
+import serial
+import cv2
+
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QImage, QPixmap
-from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtWidgets import (
+    QApplication,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QLineEdit,
+    QTextEdit,
+    QGroupBox,
+    QDialog,
+    QTabWidget,
+)
 
-class RotationDashboard(QWidget):
 
+# ------------------------------------------------------------------------------
+# 1) First dashboard: “AVØA Realtime Dashboard”
+# ------------------------------------------------------------------------------
+
+class RealtimeDashboard(QWidget):
     def __init__(self):
         super().__init__()
+        self.setWindowTitle("AVØA Realtime Dashboard")
+        self.setGeometry(100, 100, 1920, 1080)
+        self.setStyleSheet("background-color: #2f2f2f; color: white; font-size: 18px;")
+        self.running = True
+
+        # ─── Widgets ───────────────────────────────────────────────────────────────
+
+        # QLabel for displaying the camera feed
+        self.image_label = QLabel()
+        self.image_label.setFixedSize(960, 720)
+        self.image_label.setStyleSheet(
+            "border: 2px solid gray; background-color: black;"
+        )
+
+        # Labels for length × breadth × height, match status, debug log
+        self.lbh_label = QLabel("L × B × H: - × - × - mm")
+        self.lbh_label.setStyleSheet("background-color: #cc3333; padding: 10px;")
+
+        self.match_label = QLabel("Match: -")
+        self.match_label.setStyleSheet("background-color: #cc3333; padding: 10px;")
+
+        self.debug_label = QLabel("🪵 Debug: geen activiteit")
+        self.debug_label.setStyleSheet("padding: 10px; color: #888888;")
+
+        # ─── Layout ────────────────────────────────────────────────────────────────
+
+        left_panel = QVBoxLayout()
+        left_panel.addWidget(self.lbh_label)
+        left_panel.addWidget(self.match_label)
+        left_panel.addWidget(self.debug_label)
+        left_panel.addStretch()
+
+        right_panel = QVBoxLayout()
+        right_panel.addWidget(QLabel("<b>LIVE CAM FEED</b>"))
+        right_panel.addWidget(self.image_label)
+        right_panel.addStretch()
+
+        main_layout = QHBoxLayout()
+        main_layout.addLayout(left_panel)
+        main_layout.addLayout(right_panel)
+
+        self.setLayout(main_layout)
+
+        # (Optional) If you plan to drive frames via a timer or external call:
+        # self.frame_timer = QTimer()
+        # self.frame_timer.timeout.connect(self.grab_and_update_frame)
+        # self.frame_timer.start(30)  # e.g. ~30 FPS
+
+    def update_frame(self, frame):
+        """
+        Call this method whenever you have a new OpenCV frame to display.
+        Assumes detect_dimensions(frame) returns:
+          length, width, height, matched_id, match_ok, log, frame_with_overlay
+        """
+
+        # ─── Dimension detection; overlay, etc. ─────────────────────────────────
+        length, width, height, matched_id, match_ok, log, frame_with_overlay = detect_dimensions(
+            frame
+        )
+
+        # ─── Convert to QImage + QPixmap ────────────────────────────────────────
+        img_rgb = cv2.cvtColor(frame_with_overlay, cv2.COLOR_BGR2RGB)
+        h, w, ch = img_rgb.shape
+        bytes_per_line = ch * w
+        qt_image = QImage(
+            img_rgb.data, w, h, bytes_per_line, QImage.Format_RGB888
+        )
+        pixmap = (
+            QPixmap.fromImage(qt_image)
+            .scaled(
+                self.image_label.width(),
+                self.image_label.height(),
+                Qt.KeepAspectRatio,
+            )
+        )
+        self.image_label.setPixmap(pixmap)
+
+        # ─── Update all labels ───────────────────────────────────────────────────
+        self.debug_label.setText(f"Debug: {log}")
+        self.lbh_label.setText(
+            f"L × B × H: {length:.1f} × {width:.1f} × {height:.1f} mm"
+        )
+        # Change background based on match_ok
+        if match_ok:
+            self.lbh_label.setStyleSheet("background-color: #339933; padding: 10px;")
+        else:
+            self.lbh_label.setStyleSheet("background-color: #cc3333; padding: 10px;")
+
+        if matched_id:
+            self.match_label.setText(f"Match: {matched_id}")
+            self.match_label.setStyleSheet("background-color: #339933; padding: 10px;")
+        else:
+            self.match_label.setText("Match: geen")
+            self.match_label.setStyleSheet("background-color: #cc3333; padding: 10px;")
+
+
+# ------------------------------------------------------------------------------
+# 2) Second dashboard: “Ultra Calibration Dashboard”
+# ------------------------------------------------------------------------------
+
+class UltraCalibrationDashboard(QWidget):
+    def __init__(self):
+        super().__init__()
+
         self.l2_position = None  # Tracks position of L2 (servo 4)
         self.setWindowTitle("Ultra Calibration Dashboard")
         self.resize(1200, 900)
         self.setup_stylesheet()
 
-        # Serial connection
+        # ─── Serial Connection ────────────────────────────────────────────────────
         try:
-            self.ser = serial.Serial('COM7', 9600, timeout=1)
+            self.ser = serial.Serial("COM7", 9600, timeout=1)
             time.sleep(2)
         except serial.SerialException:
             sys.exit(1)
@@ -44,7 +162,8 @@ class RotationDashboard(QWidget):
         self.HEIGHT_MAX_VALID = 100  # mm
 
     def setup_stylesheet(self):
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             * { font-size: 14pt; font-family: Arial; }
             QWidget { background-color: #2b2b2b; color: #f0f0f0; }
             QPushButton {
@@ -80,20 +199,50 @@ class RotationDashboard(QWidget):
             QLabel[active="true"] {
                 background-color: #ffaa00; color: #000000;
             }
-        """)
+            """
+        )
 
     def init_ui(self):
         layout = QVBoxLayout()
-        layout.addLayout(self.create_servo_row([(0, "Conveyor 1"), (5, "Conveyor 2")], self.add_directional_controls))
-        layout.addLayout(self.create_servo_row([(2, "Pusher 1"), (6, "Pusher 2")], self.add_pusher_controls))
-        layout.addLayout(self.create_servo_row([(1, "Turntable 1"), (7, "Turntable 2")], self.add_rotation_controls))
-        layout.addLayout(self.create_servo_row([(3, "L1 (degrees)"), (4, "L2 (degrees)")], self.add_fixed_position_controls))
 
+        # 1) Conveyor 1 & 2
+        layout.addLayout(
+            self.create_servo_row(
+                [(0, "Conveyor 1"), (5, "Conveyor 2")], self.add_directional_controls
+            )
+        )
+
+        # 2) Pusher 1 & 2
+        layout.addLayout(
+            self.create_servo_row(
+                [(2, "Pusher 1"), (6, "Pusher 2")], self.add_pusher_controls
+            )
+        )
+
+        # 3) Turntable 1 & 2
+        layout.addLayout(
+            self.create_servo_row(
+                [(1, "Turntable 1"), (7, "Turntable 2")],
+                self.add_rotation_controls,
+            )
+        )
+
+        # 4) L1 (servo 3) & L2 (servo 4) fixed positions
+        layout.addLayout(
+            self.create_servo_row(
+                [(3, "L1 (degrees)"), (4, "L2 (degrees)")],
+                self.add_fixed_position_controls,
+            )
+        )
+
+        # Sensor panel + log output
         layout.addWidget(self.build_sensor_panel())
         layout.addWidget(QLabel("Log:"))
+
         self.log_output = QTextEdit()
         self.log_output.setReadOnly(True)
         layout.addWidget(self.log_output)
+
         self.setLayout(layout)
 
     def create_servo_row(self, servo_defs, control_func):
@@ -111,6 +260,7 @@ class RotationDashboard(QWidget):
         self.sensor_group = QGroupBox("Sensors")
         self.sensor_layout = QHBoxLayout()
 
+        # Left column: Beam sensors + limit switches
         left_column = QVBoxLayout()
         beam_group = QGroupBox("Beam Sensors")
         beam_layout = QHBoxLayout()
@@ -131,6 +281,7 @@ class RotationDashboard(QWidget):
         left_column.addWidget(beam_group)
         left_column.addWidget(limit_group)
 
+        # Right column: Height sensor
         right_column = QVBoxLayout()
         height_group = QGroupBox("Height Sensor")
         height_layout = QVBoxLayout()
@@ -147,35 +298,16 @@ class RotationDashboard(QWidget):
     def log(self, message):
         self.log_output.append(message)
 
-    # this should be in a separate tab in the UI
-    def update_frame(self, frame):
-        length, width, height, matched_id, match_ok, log, frame_with_overlay = detect_dimensions(frame)
-
-        img_rgb = cv2.cvtColor(frame_with_overlay, cv2.COLOR_BGR2RGB)
-        h, w, ch = img_rgb.shape
-        bytes_per_line = ch * w
-        qt_image = QImage(img_rgb.data, w, h, bytes_per_line, QImage.Format_RGB888)
-        pixmap = QPixmap.fromImage(qt_image).scaled(self.image_label.width(), self.image_label.height(), Qt.KeepAspectRatio)
-        self.image_label.setPixmap(pixmap)
-
-        self.debug_label.setText(f"Debug: {log}")
-        self.lbh_label.setText(f"L × B × H: {length:.1f} × {width:.1f} × {height:.1f} mm")
-        self.lbh_label.setStyleSheet("background-color: #339933; padding: 10px;" if match_ok else "background-color: #cc3333; padding: 10px;")
-        if matched_id:
-            self.match_label.setText(f"Match: {matched_id}")
-            self.match_label.setStyleSheet("background-color: #339933; padding: 10px;")
-        else:
-            self.match_label.setText("Match: geen")
-            self.match_label.setStyleSheet("background-color: #cc3333; padding: 10px;")
-
     def update_height(self, raw_height):
         height = self.HEIGHT_SCALE * raw_height + self.HEIGHT_OFFSET
-
         if 0 <= height <= self.HEIGHT_MAX_VALID:
             self._raw_height_buffer.append(height)
-            if len(self._raw_height_buffer) > self.MAX_BUFFER:
+            if len(self._raw_height_buffer) > self.MAX_BUFFER_SIZE:
                 self._raw_height_buffer.pop(0)
-            self.latest_height = round(sum(self._raw_height_buffer) / len(self._raw_height_buffer), 1)
+            self.average_height = round(
+                sum(self._raw_height_buffer) / len(self._raw_height_buffer), 1
+            )
+            self.height_label.setText(f"Height: {self.average_height} mm")
 
     def send_command(self, cmd):
         try:
@@ -187,7 +319,7 @@ class RotationDashboard(QWidget):
                     self.log("ERROR: Invalid POS 4 value")
 
             full_cmd = cmd.strip() + "\r\n"
-            self.ser.write(full_cmd.encode('utf-8'))
+            self.ser.write(full_cmd.encode("utf-8"))
             self.log(f"Sent: {cmd}")
         except serial.SerialException as e:
             self.log(f"ERROR sending: {e}")
@@ -199,7 +331,9 @@ class RotationDashboard(QWidget):
         popup.setStyleSheet(self.styleSheet())
 
         layout = QVBoxLayout()
-        label = QLabel("Are L1, L2, and Conveyor 5 L-Clear?\nIf not, please L-Clear the area.")
+        label = QLabel(
+            "Are L1, L2, and Conveyor 5 L-Clear?\nIf not, please L-Clear the area."
+        )
         label.setAlignment(Qt.AlignCenter)
         layout.addWidget(label)
 
@@ -224,13 +358,13 @@ class RotationDashboard(QWidget):
             return
         for btn in self.active_buttons[servo]:
             label = btn.text().lower()
-            if (servo == 3 and angle == 0 and "l-clear" in label) or \
-               (servo == 4 and angle == 210 and "l-clear" in label):
+            if (servo == 3 and angle == 0 and "l-clear" in label) or (
+                servo == 4 and angle == 210 and "l-clear" in label
+            ):
                 btn.setStyleSheet("background-color: #ffaa00; color: black;")
             else:
                 btn.setStyleSheet("")
 
-#____________________________________________________________
     def add_directional_controls(self, servo):
         row = QHBoxLayout()
         self.active_buttons[servo] = []
@@ -238,7 +372,9 @@ class RotationDashboard(QWidget):
         def handle_click(btn, c):
             for b in self.active_buttons[servo]:
                 b.setStyleSheet("")
-            btn.setStyleSheet("background-color: #ffaa00; color: black; font-size: 16pt; padding: 10px 20px;")
+            btn.setStyleSheet(
+                "background-color: #ffaa00; color: black; font-size: 16pt; padding: 10px 20px;"
+            )
             self.send_command(f"SET {servo} {c}")
 
         for label, cmd in [("Forewards", "FWD"), ("Backwards", "REV"), ("Stop", "STOP")]:
@@ -246,6 +382,7 @@ class RotationDashboard(QWidget):
             btn.clicked.connect(lambda _, b=btn, c=cmd: handle_click(b, c))
             self.active_buttons[servo].append(btn)
             row.addWidget(btn)
+
         return row
 
     def add_rotation_controls(self, servo):
@@ -266,7 +403,9 @@ class RotationDashboard(QWidget):
                 return
 
             duration_ms = int((degrees / 360) * 1600)
-            btn.setStyleSheet("background-color: #ffaa00; color: black; font-size: 16pt; padding: 10px 20px;")
+            btn.setStyleSheet(
+                "background-color: #ffaa00; color: black; font-size: 16pt; padding: 10px 20px;"
+            )
             self.send_command(f"ROTATE {servo} {degrees} {direction}")
 
             if servo in [1, 7]:
@@ -304,8 +443,8 @@ class RotationDashboard(QWidget):
             btn.clicked.connect(lambda _, b=btn, a=angle: handle_click(b, a))
             self.active_buttons[servo].append(btn)
             row.addWidget(btn)
-        return row
 
+        return row
 
     def add_pusher_controls(self, servo):
         row = QHBoxLayout()
@@ -326,7 +465,9 @@ class RotationDashboard(QWidget):
 
             for b in self.active_buttons[servo]:
                 b.setStyleSheet("")
-            btn.setStyleSheet("background-color: #ffaa00; color: black; font-size: 16pt; padding: 10px 20px;")
+            btn.setStyleSheet(
+                "background-color: #ffaa00; color: black; font-size: 16pt; padding: 10px 20px;"
+            )
             self.send_command(command)
 
             if "FWD" in command:
@@ -341,8 +482,14 @@ class RotationDashboard(QWidget):
                 b.setStyleSheet("")
             self.send_command(f"SET {servo} STOP")
 
-        btn_fwd.clicked.connect(lambda: handle_pusher_click(btn_fwd, f"SET {servo} FWD {time_input.text()}"))
-        btn_rev.clicked.connect(lambda: handle_pusher_click(btn_rev, f"SET {servo} REV"))
+        btn_fwd.clicked.connect(
+            lambda: handle_pusher_click(
+                btn_fwd, f"SET {servo} FWD {time_input.text()}"
+            )
+        )
+        btn_rev.clicked.connect(
+            lambda: handle_pusher_click(btn_rev, f"SET {servo} REV")
+        )
         btn_stop.clicked.connect(lambda: reset_pusher_buttons())
 
         row.addWidget(time_input)
@@ -366,13 +513,14 @@ class RotationDashboard(QWidget):
                 else:
                     btn.setStyleSheet("")
 
-
     def update_from_serial(self):
         try:
             while self.ser.in_waiting:
                 line = self.ser.readline().decode().strip()
                 if line:
                     self.log(f"Ontvangen: {line}")
+
+                # Beam sensors
                 if line == "b10":
                     self.beam1_label.setText("Beam sensor 1: NOT BROKEN")
                     self.beam1_label.setProperty("active", False)
@@ -389,6 +537,8 @@ class RotationDashboard(QWidget):
                     self.beam2_label.setText("Beam sensor 2: BROKEN")
                     self.beam2_label.setProperty("active", True)
                     self.beam2_label.setStyle(self.beam2_label.style())
+
+                # Limit switches
                 elif line == "STOP2":
                     self.limit1_label.setText("Limit switch 1: PRESSED")
                     self.limit1_label.setProperty("active", True)
@@ -405,6 +555,8 @@ class RotationDashboard(QWidget):
                     self.limit2_label.setText("Limit switch 2: NOT PRESSED")
                     self.limit2_label.setProperty("active", False)
                     self.limit2_label.setStyle(self.limit2_label.style())
+
+                # Height sensor
                 elif line.startswith("HT "):
                     try:
                         raw_height = int(line.split()[1])
@@ -412,10 +564,30 @@ class RotationDashboard(QWidget):
                     except ValueError:
                         self.log("FOUT: Ongeldige hoogte waarde ontvangen")
 
-            self.update_pusher2_state()  # live update Pusher 2 beschikbaarheid
+            # Always refresh Pusher 2 enable/disable
+            self.update_pusher2_state()
 
         except Exception as e:
             self.log(f"FOUT: {e}")
 
     def get_latest_height(self):
         return self.average_height
+
+
+# ------------------------------------------------------------------------------
+# 3) Main application: combine both dashboards into a QTabWidget
+# ------------------------------------------------------------------------------
+
+class MainDashboard(QTabWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Combined Dashboard")
+        self.resize(1600, 1000)
+
+        # Create instances of each dashboard
+        self.realtime_tab = RealtimeDashboard()
+        self.calibration_tab = UltraCalibrationDashboard()
+
+        # Add them as tabs
+        self.addTab(self.realtime_tab, "Realtime")
+        self.addTab(self.calibration_tab, "Ultra Calibration")
