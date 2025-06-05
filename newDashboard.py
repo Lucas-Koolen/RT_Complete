@@ -22,6 +22,7 @@ from PyQt5.QtWidgets import (
 from logic.newDetector import detect_dimensions
 from logic import camera_module
 from logic.newHeightSensor import update_height
+from config.config import SERIAL_PORT, BAUD_RATE
 
 # ------------------------------------------------------------------------------
 # 1) First dashboard: “AVØA Realtime Dashboard”
@@ -141,9 +142,10 @@ class UltraCalibrationDashboard(QWidget):
 
         # ─── Serial Connection ────────────────────────────────────────────────────
         try:
-            self.ser = serial.Serial("COM7", 9600, timeout=1)
+            self.ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
             time.sleep(2)
         except serial.SerialException:
+            print("FOUT: Kan geen verbinding maken met de seriële poort.")
             sys.exit(1)
 
         self.active_buttons = {}
