@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import time
-from config.config import MM_PER_PIXEL
+from config.config import MM_PER_PIXEL, PROCESS_SCALE
 from logic.newHeightSensor import get_latest_height
 
 # Global variables (make sure these are initialized somewhere in your module)
@@ -11,13 +11,20 @@ _last_detected_time = 0.0
 def detect_dimensions(frame):
     global _last_dimensions, _last_detected_time
     log = ""
-    
+
     try:
         orig = frame.copy()
 
+        # Optionally resize frame for faster processing
+        scale = PROCESS_SCALE if PROCESS_SCALE > 0 else 1.0
+        proc = (
+            cv2.resize(frame, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+            if scale != 1.0
+            else frame
+        )
+
         # --- 1) Pre‐process color image exactly as in C++ (bilateral filter) ---
-        # (C++: bilateralFilter(colorMat, filteredColorMat, 9, 75, 75))
-        filtered = cv2.bilateralFilter(orig, d=9, sigmaColor=75, sigmaSpace=75)
+        filtered = cv2.bilateralFilter(proc, d=9, sigmaColor=75, sigmaSpace=75)
 
         # --- 2) EDGE DETECTION FOR RECTANGLES (Canny) ---
         gray_filt = cv2.cvtColor(filtered, cv2.COLOR_BGR2GRAY)
@@ -26,47 +33,41 @@ def detect_dimensions(frame):
         # --- 3) FIND CONTOURS & APPROXIMATE POLYGONS ---
         contours, _ = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
-        # We'll keep a list of "detected rectangles" (center, size_in_pixels)
+        # Keep track of the largest suitable rectangle
+        largest_rect = None
+        max_area = 0
         rectangles = []
 
         for cnt in contours:
-            # Approximate polygon for each contour
             peri = cv2.arcLength(cnt, True)
-            approx = cv2.approxPolyDP(cnt, epsilon=0.02 * peri, closed=True)
+            approx = cv2.approxPolyDP(cnt, 0.02 * peri, True)
 
-            # Only consider contours that have 4 (or nearly‐4) corners
             if len(approx) == 4:
-                # Compute minimum‐area rectangle
                 rect = cv2.minAreaRect(approx)
                 (cx, cy), (w, h), angle = rect
-
-                # Filter out too‐small "rectangles" (same as C++: area < 50 px^2)
-                if w * h < 50:
+                area = w * h
+                if area < 50:
                     continue
+                if area > max_area:
+                    max_area = area
+                    largest_rect = rect
 
-                # Convert size to millimeters (using your MM_PER_PIXEL constant)
-                length_mm = max(w, h) * MM_PER_PIXEL
-                breadth_mm = min(w, h) * MM_PER_PIXEL
-
-                # Draw the green bounding box in orig
-                box_pts = cv2.boxPoints(rect).astype(np.int32)
-                cv2.drawContours(orig, [box_pts], contourIdx=0, color=(0, 255, 0), thickness=2)
-
-                # Save this rectangle's center + size (in pixels) for overlap checks later
-                rectangles.append({
-                    "center": (cx, cy),
-                    "width_px": w,
-                    "height_px": h,
-                    "length_mm": round(length_mm, 1),
-                    "breadth_mm": round(breadth_mm, 1)
-                })
-
-                # For this example, we break after the first valid rectangle,
-                # similar to your existing code’s “break once detected”
-                _last_dimensions = (round(length_mm, 1), round(breadth_mm, 1))
-                _last_detected_time = time.time()
-                detected = True
-                break
+        if largest_rect is not None:
+            (cx, cy), (w, h), angle = largest_rect
+            length_mm = max(w, h) / scale * MM_PER_PIXEL
+            breadth_mm = min(w, h) / scale * MM_PER_PIXEL
+            box_pts = cv2.boxPoints(largest_rect) / scale
+            cv2.drawContours(orig, [box_pts.astype(np.int32)], 0, (0, 255, 0), 2)
+            rectangles.append({
+                "center": (cx / scale, cy / scale),
+                "width_px": w / scale,
+                "height_px": h / scale,
+                "length_mm": round(length_mm, 1),
+                "breadth_mm": round(breadth_mm, 1),
+            })
+            _last_dimensions = (round(length_mm, 1), round(breadth_mm, 1))
+            _last_detected_time = time.time()
+            detected = True
         else:
             detected = False
 
@@ -116,14 +117,14 @@ def detect_dimensions(frame):
                     continue
 
                 # Draw circle in red, center dot in blue
-                cv2.circle(orig, (cir_cx, cir_cy), cir_r, (0, 0, 255), 2)
-                cv2.circle(orig, (cir_cx, cir_cy), 2, (255, 0, 0), 2)
+                cv2.circle(orig, (int(cir_cx / scale), int(cir_cy / scale)), int(cir_r / scale), (0, 0, 255), 2)
+                cv2.circle(orig, (int(cir_cx / scale), int(cir_cy / scale)), 2, (255, 0, 0), 2)
 
                 # Save circle info (in pixels → mm)
                 circles.append({
-                    "center": (cir_cx, cir_cy),
-                    "radius_px": cir_r,
-                    "radius_mm": round(cir_r * MM_PER_PIXEL, 1)
+                    "center": (cir_cx / scale, cir_cy / scale),
+                    "radius_px": cir_r / scale,
+                    "radius_mm": round((cir_r / scale) * MM_PER_PIXEL, 1)
                 })
 
                 # If you only want to handle one circle (like you do one rectangle), break
