@@ -86,7 +86,7 @@ void updateHeight() {
       Serial.print("HT ");
       Serial.println(d);
     }
-    lastSendTime = millis();
+    lastHeightSendTime = millis();
   }
 }
 
