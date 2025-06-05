@@ -4,12 +4,13 @@ import time
 from config.config import MM_PER_PIXEL, PROCESS_SCALE
 from logic.newHeightSensor import get_latest_height
 from logic.shape import Shape
+from logic.db_connector import DatabaseConnector
 
 # Global variables (make sure these are initialized somewhere in your module)
 _last_dimensions = None
 _last_detected_time = 0.0
 
-def detect_dimensions(frame):
+def detect_dimensions(frame, dataBase: DatabaseConnector):
     global _last_dimensions, _last_detected_time
     log = ""
 
@@ -141,7 +142,6 @@ def detect_dimensions(frame):
             return l, b, 0, Shape.INVALID, None, False, log, orig
 
         h_mm = round(height, 1)
-        matched_id, ok = None, False  # Placeholder: you can insert your own matching logic here
 
         shape = Shape.BOX  # Default shape is box; change if you detect a circle
 
@@ -152,9 +152,11 @@ def detect_dimensions(frame):
             dia = round(2 * c["radius_mm"], 1)
             shape = Shape.CYLINDER
             l, b = dia, dia
-            log = f"✅ Cirkel gedetecteerd: Diameter={dia:.1f} mm, H={h_mm:.1f} mm, match={matched_id or 'geen'}"
-        else:
-            log = f"✅ Rechthoek gedetecteerd: L={l:.1f} mm × B={b:.1f} mm, H={h_mm:.1f} mm, match={matched_id or 'geen'}"
+
+        #matched_id, ok = None, False  # Placeholder: you can insert your own matching logic here
+        matched_id, ok = dataBase.find_best_match(l, b, h_mm, shape)
+
+        log = f"✅ Vorm gedetecteerd: L={l:.1f} mm × B={b:.1f} mm, H={h_mm:.1f} mm, shape={shape.shapeToString()}, match={matched_id or 'geen'}"
 
         return l, b, h_mm, shape, matched_id, ok, log, orig
 

@@ -1,5 +1,6 @@
 import pymysql
-from config.config import DB_CONFIG, TABLE_NAME, DB_STATUS_FILTER, TOLERANCE_PERCENTAGE
+from config.config import DB_CONFIG, TABLE_NAME, DB_STATUS_FILTER, MATCH_TOLERANCE
+from logic.shape import Shape
 
 class DatabaseConnector:
     def __init__(self):
@@ -32,7 +33,7 @@ class DatabaseConnector:
         self.connection.commit()
         print(f"[DB] Doos {common_id} gemarkeerd als 'placed'.")
 
-    def find_best_match(self, detected_l, detected_b, detected_h):
+    def find_best_match(self, detected_l, detected_b, detected_h, detected_shape):
         candidates = self.get_unplaced_boxes()
         best_match = None
         best_score = float('inf')  # lagere score = betere match
@@ -41,23 +42,33 @@ class DatabaseConnector:
             l_db = float(box['length'])
             b_db = float(box['width'])
             h_db = float(box['height'])
+            shapeStr = box['shape']
+
+            # get shape enum from string
+            if shapeStr == 'box':
+                shape = Shape.BOX
+            elif shapeStr == 'cylinder':
+                shape = Shape.CYLINDER
+            else:
+                shape = Shape.INVALID
 
             # controleer toleranties beide richtingen (L-B / B-L matchen)
             for dims in [(l_db, b_db), (b_db, l_db)]:
                 l_match = self.is_within_tolerance(detected_l, dims[0])
                 b_match = self.is_within_tolerance(detected_b, dims[1])
+                shape_match = (shape == detected_shape)
                 h_match = self.is_within_tolerance(detected_h, h_db)
 
-                if l_match and b_match:
+                if l_match and b_match and shape_match:
                     deviation = abs(detected_l - dims[0]) + abs(detected_b - dims[1]) + abs(detected_h - h_db)
                     if deviation < best_score:
                         best_score = deviation
                         best_match = box
 
-        return best_match
+        return best_match, best_match is not None
 
     def is_within_tolerance(self, measured, reference):
-        tolerance = reference * TOLERANCE_PERCENTAGE
+        tolerance = reference * MATCH_TOLERANCE
         return (reference - tolerance) <= measured <= (reference + tolerance)
 
     def close(self):

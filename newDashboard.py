@@ -25,6 +25,8 @@ from logic.newHeightSensor import update_height
 from logic.shape import Shape
 from config.config import SERIAL_PORT, BAUD_RATE
 
+from logic.db_connector import DatabaseConnector
+
 # ------------------------------------------------------------------------------
 # 1) First dashboard: “AVØA Realtime Dashboard”
 # ------------------------------------------------------------------------------
@@ -80,6 +82,8 @@ class RealtimeDashboard(QWidget):
         # self.frame_timer.timeout.connect(self.grab_and_update_frame)
         # self.frame_timer.start(30)  # e.g. ~30 FPS
 
+        self.dataBase = DatabaseConnector()
+
     def update_frame(self, frame):
         """
         Call this method whenever you have a new OpenCV frame to display.
@@ -88,9 +92,7 @@ class RealtimeDashboard(QWidget):
         """
 
         # ─── Dimension detection; overlay, etc. ─────────────────────────────────
-        length, width, height, shape, matched_id, match_ok, log, frame_with_overlay = detect_dimensions(
-            frame
-        )
+        length, width, height, shape, matched_id, match_ok, log, frame_with_overlay = detect_dimensions(frame, self.dataBase)
 
         # ─── Convert to QImage + QPixmap ────────────────────────────────────────
         img_rgb = cv2.cvtColor(frame_with_overlay, cv2.COLOR_BGR2RGB)
