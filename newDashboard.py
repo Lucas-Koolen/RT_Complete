@@ -152,7 +152,7 @@ class RotationDashboard(QWidget):
             self._raw_height_buffer.append(height)
             if len(self._raw_height_buffer) > self.MAX_BUFFER:
                 self._raw_height_buffer.pop(0)
-            latest_height = round(sum(self._raw_height_buffer) / len(self._raw_height_buffer), 1)
+            self.latest_height = round(sum(self._raw_height_buffer) / len(self._raw_height_buffer), 1)
 
     def send_command(self, cmd):
         try:
@@ -382,6 +382,12 @@ class RotationDashboard(QWidget):
                     self.limit2_label.setText("Limit switch 2: NOT PRESSED")
                     self.limit2_label.setProperty("active", False)
                     self.limit2_label.setStyle(self.limit2_label.style())
+                elif line.startswith("HT "):
+                    try:
+                        raw_height = int(line.split()[1])
+                        self.update_height(raw_height)
+                    except ValueError:
+                        self.log("FOUT: Ongeldige hoogte waarde ontvangen")
 
             self.update_pusher2_state()  # live update Pusher 2 beschikbaarheid
 
