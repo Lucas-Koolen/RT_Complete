@@ -23,10 +23,3 @@ if __name__ == "__main__":
     window.show()
 
     sys.exit(app.exec_())
-
-# This code initializes a PyQt application and displays a dashboard for rotation control.
-#if __name__ == "__main__":
-#    app = QApplication(sys.argv)
-#    window = UltraCalDashboard()
-#    window.show()
-#    sys.exit(app.exec_())
