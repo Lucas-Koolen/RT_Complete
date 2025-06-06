@@ -168,11 +168,30 @@ class Communicator:
         # flipper numbers: 3 = flipper 1, 4 = flipper 2
         # position: either "CLEAR", "ENTER" or "EXIT"
         servoNumber = None
-        match flipperNumber:
-            case 1:
+        servoPosition = None
+        match flipperNumber, position:
+            case (1, "CLEAR"):
                 servoNumber = 3
-            case 2:
+                servoPosition = 0
+            case (1, "ENTER"):
+                servoNumber = 3
+                servoPosition = 105
+            case (1, "EXIT"):
+                servoNumber = 3
+                servoPosition = 210
+            case (2, "CLEAR"):
                 servoNumber = 4
+                servoPosition = 210
+            case (2, "ENTER"):
+                servoNumber = 4
+                servoPosition = 0
+            case (2, "EXIT"):
+                servoNumber = 4
+                servoPosition = 110
             case _:
-                print("Error: Invalid flipper number")
+                print("Error: Invalid flipper number or position")
                 return
+            
+        cmd = f"POS {servoNumber} {servoPosition}"
+        self.send_command(cmd)
+        print(f"Flipper {flipperNumber} {position} was sent")
