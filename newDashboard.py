@@ -202,21 +202,21 @@ class ManualControlDashboard(QWidget):
         # 1) Conveyor 1 & 2
         layout.addLayout(
             self.create_servo_row(
-                [(0, "Conveyor 1"), (5, "Conveyor 2")], self.add_directional_controls
+                [(1, "Conveyor 1"), (2, "Conveyor 2")], self.add_directional_controls
             )
         )
 
         # 2) Pusher 1 & 2
         layout.addLayout(
             self.create_servo_row(
-                [(2, "Pusher 1"), (6, "Pusher 2")], self.add_pusher_controls
+                [(1, "Pusher 1"), (2, "Pusher 2")], self.add_pusher_controls
             )
         )
 
         # 3) Turntable 1 & 2
         layout.addLayout(
             self.create_servo_row(
-                [(1, "Turntable 1"), (7, "Turntable 2")],
+                [(1, "Turntable 1"), (2, "Turntable 2")],
                 self.add_rotation_controls,
             )
         )
@@ -224,7 +224,7 @@ class ManualControlDashboard(QWidget):
         # 4) L1 (servo 3) & L2 (servo 4) fixed positions
         layout.addLayout(
             self.create_servo_row(
-                [(3, "L1 (degrees)"), (4, "L2 (degrees)")],
+                [(1, "L1 (degrees)"), (2, "L2 (degrees)")],
                 self.add_fixed_position_controls,
             )
         )
@@ -300,12 +300,12 @@ class ManualControlDashboard(QWidget):
 
         layout = QVBoxLayout()
         label = QLabel(
-            "Are L1, L2, and Conveyor 5 L-Clear?\nIf not, please L-Clear the area."
+            "Are Flipper 1, Flipper 2, and Conveyor 1 clear?\nIf not, please clear the area."
         )
         label.setAlignment(Qt.AlignCenter)
         layout.addWidget(label)
 
-        confirm_button = QPushButton("Confirm: area is L-Clear")
+        confirm_button = QPushButton("Confirm: area is clear")
         confirm_button.clicked.connect(lambda: self.perform_safety_sequence(popup))
         layout.addWidget(confirm_button)
 
@@ -315,39 +315,25 @@ class ManualControlDashboard(QWidget):
     def perform_safety_sequence(self, popup):
         self.serialCommunicator.moveConveyor(2, "FWD")
         self.serialCommunicator.moveFlipper(1, "CLEAR")
-        self.set_L_position_button_active(3, 0)
         self.serialCommunicator.moveFlipper(2, "CLEAR")
-        self.set_L_position_button_active(4, 210)
         QTimer.singleShot(1000, lambda: self.serialCommunicator.moveConveyor(2, "STOP"))
         popup.accept()
-
-    def set_L_position_button_active(self, servo, angle):
-        if servo not in self.active_buttons:
-            return
-        for btn in self.active_buttons[servo]:
-            label = btn.text().lower()
-            if (servo == 3 and angle == 0 and "l-clear" in label) or (
-                servo == 4 and angle == 210 and "l-clear" in label
-            ):
-                btn.setStyleSheet("background-color: #ffaa00; color: black;")
-            else:
-                btn.setStyleSheet("")
 
     def add_directional_controls(self, servo):
         row = QHBoxLayout()
         self.active_buttons[servo] = []
 
-        def handle_click(btn, c):
+        def handle_click(btn, direction):
             for b in self.active_buttons[servo]:
                 b.setStyleSheet("")
             btn.setStyleSheet(
                 "background-color: #ffaa00; color: black; font-size: 16pt; padding: 10px 20px;"
             )
-            self.send_command(f"SET {servo} {c}")
+            self.serialCommunicator.moveConveyor(servo, direction)
 
-        for label, cmd in [("Forewards", "FWD"), ("Backwards", "REV"), ("Stop", "STOP")]:
+        for label, direction in [("Forewards", "FWD"), ("Backwards", "REV"), ("Stop", "STOP")]:
             btn = QPushButton(label)
-            btn.clicked.connect(lambda _, b=btn, c=cmd: handle_click(b, c))
+            btn.clicked.connect(lambda _, b=btn, d=direction: handle_click(b, d))
             self.active_buttons[servo].append(btn)
             row.addWidget(btn)
 
@@ -374,7 +360,7 @@ class ManualControlDashboard(QWidget):
             btn.setStyleSheet(
                 "background-color: #ffaa00; color: black; font-size: 16pt; padding: 10px 20px;"
             )
-            self.send_command(f"ROTATE {servo} {degrees} {direction}")
+            self.serialCommunicator.rotateRotator(servo, degrees, direction)
 
             if servo in [1, 7]:
                 QTimer.singleShot(duration_ms, lambda: btn.setStyleSheet(""))
@@ -393,22 +379,15 @@ class ManualControlDashboard(QWidget):
         row = QHBoxLayout()
         self.active_buttons[servo] = []
 
-        if servo == 3:
-            pos_dict = {"Clear": 0, "Box Enter": 105, "Box Out": 210}
-        elif servo == 4:
-            pos_dict = {"Clear": 210, "Box Enter": 0, "Box Out": 110}
-        else:
-            pos_dict = {}
-
-        def handle_click(btn, angle):
+        def handle_click(btn, position):
             for b in self.active_buttons[servo]:
                 b.setStyleSheet("")
             btn.setStyleSheet("background-color: #ffaa00; color: black;")
-            self.send_command(f"POS {servo} {angle}")
+            self.serialCommunicator.moveFlipper(servo, position)
 
-        for label, angle in pos_dict.items():
+        for label, position in [("Clear", "CLEAR"), ("Box Enter", "ENTER"), ("Box Out", "EXIT")]:
             btn = QPushButton(label)
-            btn.clicked.connect(lambda _, b=btn, a=angle: handle_click(b, a))
+            btn.clicked.connect(lambda _, b=btn, p=position: handle_click(b, p))
             self.active_buttons[servo].append(btn)
             row.addWidget(btn)
 
@@ -426,48 +405,27 @@ class ManualControlDashboard(QWidget):
 
         self.active_buttons[servo] = [btn_fwd, btn_rev]
 
-        def handle_pusher_click(btn, command):
-            if servo == 6 and self.l2_position != 210:
-                self.log("Pusher 2 geblokkeerd: L2 staat niet op 'Weg'")
-                return
+        def handle_pusher_click(btn, direction, distance=None):
 
             for b in self.active_buttons[servo]:
                 b.setStyleSheet("")
-            btn.setStyleSheet(
-                "background-color: #ffaa00; color: black; font-size: 16pt; padding: 10px 20px;"
-            )
-            self.send_command(command)
+            btn.setStyleSheet("background-color: #ffaa00; color: black; font-size: 16pt; padding: 10px 20px;")
+            
+            self.serialCommunicator.movePusher(servo, direction, distance)
 
-            if "FWD" in command:
-                try:
-                    duration = int(command.split()[3])
-                    QTimer.singleShot(duration, lambda: btn.setStyleSheet(""))
-                except:
-                    pass
+        btn_fwd.clicked.connect(lambda: handle_pusher_click(btn_fwd, "FWD", int(time_input.text()) if time_input.text().isdigit() else None))
 
-        def reset_pusher_buttons():
-            for b in self.active_buttons[servo]:
-                b.setStyleSheet("")
-            self.send_command(f"SET {servo} STOP")
+        btn_rev.clicked.connect(lambda: handle_pusher_click(btn_rev, "REV"))
 
-        btn_fwd.clicked.connect(
-            lambda: handle_pusher_click(
-                btn_fwd, f"SET {servo} FWD {time_input.text()}"
-            )
-        )
-        btn_rev.clicked.connect(
-            lambda: handle_pusher_click(btn_rev, f"SET {servo} REV")
-        )
-        btn_stop.clicked.connect(lambda: reset_pusher_buttons())
+        btn_stop.clicked.connect(lambda: handle_pusher_click(btn_stop, "STOP"))	
 
         row.addWidget(time_input)
         row.addWidget(btn_fwd)
         row.addWidget(btn_rev)
         row.addWidget(btn_stop)
 
-        if servo == 6:
+        if servo == 2:
             self.pusher2_buttons = [btn_fwd, btn_rev]
-            self.update_pusher2_state()
 
         return row
 
@@ -484,7 +442,7 @@ class ManualControlDashboard(QWidget):
                 else:
                     btn.setStyleSheet("")
         
-        if self.serialCommunicator.beam1_broken:
+        if self.serialCommunicator.get_beam1_state():
             self.beam1_label.setText("Beam sensor 1: BROKEN")
             self.beam1_label.setProperty("active", True)
             self.beam1_label.setStyle(self.beam1_label.style())
@@ -493,7 +451,7 @@ class ManualControlDashboard(QWidget):
             self.beam1_label.setProperty("active", False)
             self.beam1_label.setStyle(self.beam1_label.style())
 
-        if self.serialCommunicator.beam2_broken:
+        if self.serialCommunicator.get_beam2_state():
             self.beam2_label.setText("Beam sensor 2: BROKEN")
             self.beam2_label.setProperty("active", True)
             self.beam2_label.setStyle(self.beam2_label.style())
@@ -502,7 +460,7 @@ class ManualControlDashboard(QWidget):
             self.beam2_label.setProperty("active", False)
             self.beam2_label.setStyle(self.beam2_label.style())
 
-        if self.serialCommunicator.limit1_pressed:
+        if self.serialCommunicator.get_limit1_state():
             self.limit1_label.setText("Limit switch 1: PRESSED")
             self.limit1_label.setProperty("active", True)
             self.limit1_label.setStyle(self.limit1_label.style())
@@ -511,7 +469,7 @@ class ManualControlDashboard(QWidget):
             self.limit1_label.setProperty("active", False)
             self.limit1_label.setStyle(self.limit1_label.style())
         
-        if self.serialCommunicator.limit2_pressed:
+        if self.serialCommunicator.get_limit2_state():
             self.limit2_label.setText("Limit switch 2: PRESSED")
             self.limit2_label.setProperty("active", True)
             self.limit2_label.setStyle(self.limit2_label.style())

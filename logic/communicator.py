@@ -50,16 +50,16 @@ class Communicator:
         try:
             full_cmd = cmd.strip() + "\r\n"
             self.ser.write(full_cmd.encode("utf-8"))
-            self.log(f"Sent: {cmd}")
+            print(f"Sent: {full_cmd.strip()}")
         except serial.SerialException as e:
-            self.log(f"ERROR sending: {e}")
+            print(f"Error sending command: {e}")
     
     def update_from_serial(self):
         try:
             while self.ser.in_waiting:
                 line = self.ser.readline().decode().strip()
                 if line:
-                    self.log(f"Received: {line}")
+                    print(f"Received: {line}")
 
                 # Beam sensors
                 if line == "b10":
@@ -94,7 +94,7 @@ class Communicator:
         except Exception as e:
             print(f"Error: {e}")
 
-    def rotateRotator(self, rotatorNumber, direction, degrees):
+    def rotateRotator(self, rotatorNumber, degrees, direction):
         # servo numbers: 1 = rotator 1, 7 = rotator 2
         # rotation: either "FWD" (clockwise) or "REV" (counter-clockwise)
         servoNumber = None
@@ -115,9 +115,9 @@ class Communicator:
             print("Error: Invalid degrees, must be between 0 and 360")
             return
 
-        cmd = f"ROTATE {servoNumber} {direction} {degrees}"
+        cmd = f"ROTATE {servoNumber} {degrees} {direction}"
         self.send_command(cmd)
-        print(f"Rotator {rotatorNumber} {direction} {degrees}° was sent")
+        print(f"Rotator {rotatorNumber} {degrees} {direction}° was sent")
 
     def movePusher(self, pusherNumber, direction, distance = None):
         # pusher numbers: 2 = pusher 1, 6 = pusher 2
