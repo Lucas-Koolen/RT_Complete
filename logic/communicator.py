@@ -4,6 +4,7 @@ import sys
 
 from logic.newHeightSensor import update_height
 from config.config import SERIAL_PORT, BAUD_RATE
+from config.config import PUSHER_MAX_DISTANCE, MM_PER_SECOND
 
 class Communicator:
 
@@ -126,4 +127,32 @@ class Communicator:
         self.send_command(cmd)
         print(f"Rotator {rotatorNumber} {direction} {degrees}° gestuurd")
 
-    
+    def movePusher(self, pusherNumber, direction, distance = None):
+        # pusher numbers: 2 = pusher 1, 6 = pusher 2
+        # direction: either "FWD" (forward), "REV" (reverse) or "STOP"
+        # REV and STOP do not require use the distance parameter
+        # command uses time instead of distance
+        servoNumber = None
+        match pusherNumber:
+            case 1:
+                servoNumber = 2
+            case 2:
+                servoNumber = 6
+            case _:
+                print("FOUT: Ongeldig pusher nummer")
+                return
+        
+        if direction == "FW":
+            if distance is None or distance < 0 or distance > PUSHER_MAX_DISTANCE:
+                print(f"FOUT: Ongeldige afstand, moet tussen 0 en {PUSHER_MAX_DISTANCE} mm liggen")
+                return
+            time_millis = int(distance / MM_PER_SECOND * 1000)
+            cmd = f"SET {servoNumber} {direction} {time_millis}"
+        elif direction == "REV" or direction == "STOP":
+            cmd = f"SET {servoNumber} {direction}"
+        else:
+            print("FOUT: Ongeldige richting")
+            return
+        
+        self.send_command(cmd)
+        print(f"Pusher {pusherNumber} {direction} gestuurd")
