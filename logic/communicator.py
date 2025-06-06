@@ -16,7 +16,7 @@ class Communicator:
         self.limit2State = None
         self.height = None
         self.dobotState = None
-        self.pusher2Pos = None
+        self.flipper2Pos = None
 
         # ─── Serial Connection ────────────────────────────────────────────────────
         try:
@@ -44,12 +44,15 @@ class Communicator:
     def get_dobot_state(self):
         return self.dobotState
     
+    def get_flipper2_pos(self):
+        return self.flipper2Pos
+    
     def send_command(self, cmd):
         try:
             if cmd.startswith("POS 4"):
                 try:
-                    self.pusher2Pos = int(cmd.split()[2])
-                    self.log(f"Pusher 2 position updated to {self.pusher2Pos}")
+                    self.flipper2Pos = int(cmd.split()[2])
+                    self.log(f"Flipper 2 position updated to {self.flipper2Pos}")
                 except ValueError:
                     self.log("ERROR: Invalid POS 4 value")
 
@@ -141,6 +144,10 @@ class Communicator:
             case _:
                 print("FOUT: Ongeldig pusher nummer")
                 return
+            
+        if pusherNumber == 2 and self.flipper2Pos != 210:
+            print("FOUT: Flipper 2 moet eerst naar veilige positie (210) worden gezet")
+            return
         
         if direction == "FW":
             if distance is None or distance < 0 or distance > PUSHER_MAX_DISTANCE:
