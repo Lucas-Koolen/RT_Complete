@@ -26,6 +26,7 @@ from logic.shape import Shape
 from config.config import SERIAL_PORT, BAUD_RATE
 
 from logic.db_connector import DatabaseConnector
+from logic.communicator import Communicator
 
 # ------------------------------------------------------------------------------
 # 1) First dashboard: “AVØA Realtime Dashboard”
@@ -143,13 +144,7 @@ class ManualControlDashboard(QWidget):
         self.resize(1200, 900)
         self.setup_stylesheet()
 
-        # ─── Serial Connection ────────────────────────────────────────────────────
-        try:
-            self.ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
-            time.sleep(2)
-        except serial.SerialException:
-            print("FOUT: Kan geen verbinding maken met de seriële poort.")
-            sys.exit(1)
+        self.serialCommunicator = Communicator()
 
         self.active_buttons = {}
         self.auto_stop_timers = {}
@@ -157,7 +152,7 @@ class ManualControlDashboard(QWidget):
         self.show_safety_popup()
 
         self.status_timer = QTimer()
-        self.status_timer.timeout.connect(self.update_from_serial)
+        self.status_timer.timeout.connect(self.updateUI)
         self.status_timer.start(200)
 
     def setup_stylesheet(self):
@@ -297,21 +292,6 @@ class ManualControlDashboard(QWidget):
     def log(self, message):
         self.log_output.append(message)
 
-    def send_command(self, cmd):
-        try:
-            if cmd.startswith("POS 4"):
-                try:
-                    self.l2_position = int(cmd.split()[2])
-                    self.log(f"L2 position updated to {self.l2_position}")
-                except ValueError:
-                    self.log("ERROR: Invalid POS 4 value")
-
-            full_cmd = cmd.strip() + "\r\n"
-            self.ser.write(full_cmd.encode("utf-8"))
-            self.log(f"Sent: {cmd}")
-        except serial.SerialException as e:
-            self.log(f"ERROR sending: {e}")
-
     def show_safety_popup(self):
         popup = QDialog(self)
         popup.setWindowTitle("Safety Check")
@@ -333,12 +313,12 @@ class ManualControlDashboard(QWidget):
         popup.exec_()
 
     def perform_safety_sequence(self, popup):
-        self.send_command("SET 5 FWD")
-        self.send_command("POS 3 0")
+        self.serialCommunicator.moveConveyor(2, "FWD")
+        self.serialCommunicator.moveFlipper(1, "CLEAR")
         self.set_L_position_button_active(3, 0)
-        self.send_command("POS 4 210")
+        self.serialCommunicator.moveFlipper(2, "CLEAR")
         self.set_L_position_button_active(4, 210)
-        QTimer.singleShot(1000, lambda: self.send_command("SET 5 STOP"))
+        QTimer.singleShot(1000, lambda: self.serialCommunicator.moveConveyor(2, "STOP"))
         popup.accept()
 
     def set_L_position_button_active(self, servo, angle):
@@ -491,81 +471,64 @@ class ManualControlDashboard(QWidget):
 
         return row
 
-    def update_pusher2_state(self):
+    def updateUI(self):
+        # Get latest info from communicator class
+        self.serialCommunicator.update_from_serial()
+
         if hasattr(self, "pusher2_buttons"):
-            state = self.l2_position == 210
+            state = self.serialCommunicator.get_flipper2_pos() == 210
             for btn in self.pusher2_buttons:
                 btn.setEnabled(state)
                 if not state:
                     btn.setStyleSheet("background-color: #555555; color: #aaaaaa;")
                 else:
                     btn.setStyleSheet("")
+        
+        if self.serialCommunicator.beam1_broken:
+            self.beam1_label.setText("Beam sensor 1: BROKEN")
+            self.beam1_label.setProperty("active", True)
+            self.beam1_label.setStyle(self.beam1_label.style())
+        else:
+            self.beam1_label.setText("Beam sensor 1: NOT BROKEN")
+            self.beam1_label.setProperty("active", False)
+            self.beam1_label.setStyle(self.beam1_label.style())
 
-    def update_from_serial(self):
-        try:
-            while self.ser.in_waiting:
-                line = self.ser.readline().decode().strip()
-                if line:
-                    self.log(f"Ontvangen: {line}")
+        if self.serialCommunicator.beam2_broken:
+            self.beam2_label.setText("Beam sensor 2: BROKEN")
+            self.beam2_label.setProperty("active", True)
+            self.beam2_label.setStyle(self.beam2_label.style())
+        else:
+            self.beam2_label.setText("Beam sensor 2: NOT BROKEN")
+            self.beam2_label.setProperty("active", False)
+            self.beam2_label.setStyle(self.beam2_label.style())
 
-                # Beam sensors
-                if line == "b10":
-                    self.beam1_label.setText("Beam sensor 1: NOT BROKEN")
-                    self.beam1_label.setProperty("active", False)
-                    self.beam1_label.setStyle(self.beam1_label.style())
-                elif line == "b11":
-                    self.beam1_label.setText("Beam sensor 1: BROKEN")
-                    self.beam1_label.setProperty("active", True)
-                    self.beam1_label.setStyle(self.beam1_label.style())
-                elif line == "b20":
-                    self.beam2_label.setText("Beam sensor 2: NOT BROKEN")
-                    self.beam2_label.setProperty("active", False)
-                    self.beam2_label.setStyle(self.beam2_label.style())
-                elif line == "b21":
-                    self.beam2_label.setText("Beam sensor 2: BROKEN")
-                    self.beam2_label.setProperty("active", True)
-                    self.beam2_label.setStyle(self.beam2_label.style())
+        if self.serialCommunicator.limit1_pressed:
+            self.limit1_label.setText("Limit switch 1: PRESSED")
+            self.limit1_label.setProperty("active", True)
+            self.limit1_label.setStyle(self.limit1_label.style())
+        else:
+            self.limit1_label.setText("Limit switch 1: NOT PRESSED")
+            self.limit1_label.setProperty("active", False)
+            self.limit1_label.setStyle(self.limit1_label.style())
+        
+        if self.serialCommunicator.limit2_pressed:
+            self.limit2_label.setText("Limit switch 2: PRESSED")
+            self.limit2_label.setProperty("active", True)
+            self.limit2_label.setStyle(self.limit2_label.style())
+        else:
+            self.limit2_label.setText("Limit switch 2: NOT PRESSED")
+            self.limit2_label.setProperty("active", False)
+            self.limit2_label.setStyle(self.limit2_label.style())
 
-                # Limit switches
-                elif line == "STOP2":
-                    self.limit1_label.setText("Limit switch 1: PRESSED")
-                    self.limit1_label.setProperty("active", True)
-                    self.limit1_label.setStyle(self.limit1_label.style())
-                elif line == "STOP6":
-                    self.limit2_label.setText("Limit switch 2: PRESSED")
-                    self.limit2_label.setProperty("active", True)
-                    self.limit2_label.setStyle(self.limit2_label.style())
-                elif line == "GO2":
-                    self.limit1_label.setText("Limit switch 1: NOT PRESSED")
-                    self.limit1_label.setProperty("active", False)
-                    self.limit1_label.setStyle(self.limit1_label.style())
-                elif line == "GO6":
-                    self.limit2_label.setText("Limit switch 2: NOT PRESSED")
-                    self.limit2_label.setProperty("active", False)
-                    self.limit2_label.setStyle(self.limit2_label.style())
-
-                # Height sensor
-                elif line.startswith("HT "):
-                    try:
-                        raw_height = int(line.split()[1])
-                        height = update_height(raw_height)
-                        if height is not None:
-                            self.height_label.setText(f"Height: {height} mm")
-                            self.height_label.setProperty("active", True)
-                            self.height_label.setStyle(self.height_label.style())
-                        else:
-                            self.height_label.setText("Height: NULL")
-                            self.height_label.setProperty("active", False)
-                            self.height_label.setStyle(self.height_label.style())
-                    except ValueError:
-                        self.log("FOUT: Ongeldige hoogte waarde ontvangen")
-
-            # Always refresh Pusher 2 enable/disable
-            self.update_pusher2_state()
-
-        except Exception as e:
-            self.log(f"FOUT: {e}")
-
+        if self.serialCommunicator.get_height() is not None:
+            height = self.serialCommunicator.get_height()
+            self.height_label.setText(f"Height: {height} mm")
+            self.height_label.setProperty("active", True)
+            self.height_label.setStyle(self.height_label.style())
+        else:
+            self.height_label.setText("Height: NULL")
+            self.height_label.setProperty("active", False)
+            self.height_label.setStyle(self.height_label.style())
 
 # ------------------------------------------------------------------------------
 # 3) Main application: combine both dashboards into a QTabWidget
