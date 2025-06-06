@@ -131,15 +131,15 @@ class RealtimeDashboard(QWidget):
 
 
 # ------------------------------------------------------------------------------
-# 2) Second dashboard: “Ultra Calibration Dashboard”
+# 2) Second dashboard: “Manual Control Dashboard”
 # ------------------------------------------------------------------------------
 
-class UltraCalibrationDashboard(QWidget):
+class ManualControlDashboard(QWidget):
     def __init__(self):
         super().__init__()
 
         self.l2_position = None  # Tracks position of L2 (servo 4)
-        self.setWindowTitle("Ultra Calibration Dashboard")
+        self.setWindowTitle("Manual Control Dashboard")
         self.resize(1200, 900)
         self.setup_stylesheet()
 
@@ -579,8 +579,8 @@ class MainDashboard(QTabWidget):
 
         # Create instances of each dashboard
         self.realtime_tab = RealtimeDashboard()
-        self.calibration_tab = UltraCalibrationDashboard()
+        self.manual_tab = ManualControlDashboard()
 
         # Add them as tabs
         self.addTab(self.realtime_tab, "Realtime")
-        self.addTab(self.calibration_tab, "Ultra Calibration")
+        self.addTab(self.manual_tab, "Manual Control")
