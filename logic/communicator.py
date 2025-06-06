@@ -8,8 +8,7 @@ from config.config import PUSHER_MAX_DISTANCE, MM_PER_SECOND
 
 class Communicator:
 
-    def __init__(self, communicator):
-        self._communicator = communicator
+    def __init__(self):
         self.beam1State = None
         self.beam2State = None
         self.limit1State = None
@@ -49,13 +48,6 @@ class Communicator:
     
     def send_command(self, cmd):
         try:
-            if cmd.startswith("POS 4"):
-                try:
-                    self.flipper2Pos = int(cmd.split()[2])
-                    self.log(f"Flipper 2 position updated to {self.flipper2Pos}")
-                except ValueError:
-                    self.log("ERROR: Invalid POS 4 value")
-
             full_cmd = cmd.strip() + "\r\n"
             self.ser.write(full_cmd.encode("utf-8"))
             self.log(f"Sent: {cmd}")
@@ -98,9 +90,6 @@ class Communicator:
                             self.height = newHeight
                     except ValueError as ve:
                         print(f"Error with processing height: {ve}")
-
-            # Always refresh Pusher 2 enable/disable
-            #self.update_pusher2_state()
 
         except Exception as e:
             print(f"Error: {e}")
@@ -164,6 +153,27 @@ class Communicator:
         self.send_command(cmd)
         print(f"Pusher {pusherNumber} {direction} was sent")
 
+    def moveConveyor(self, conveyorNumber, direction):
+        # conveyor numbers: 0 = conveyor 1, 5 = conveyor 2
+        # direction: either "FWD" (forward), "REV" (reverse) or "STOP"
+        servoNumber = None
+        match conveyorNumber:
+            case 1:
+                servoNumber = 0
+            case 2:
+                servoNumber = 5
+            case _:
+                print("Error: Invalid conveyor number")
+                return
+            
+        if direction not in ["FWD", "REV", "STOP"]:
+            print("Error: Invalid direction, must be 'FWD', 'REV' or 'STOP'")
+            return
+        
+        cmd = f"SET {servoNumber} {direction}"
+        self.send_command(cmd)
+        print(f"Conveyor {conveyorNumber} {direction} was sent")
+
     def moveFlipper(self, flipperNumber, position):
         # flipper numbers: 3 = flipper 1, 4 = flipper 2
         # position: either "CLEAR", "ENTER" or "EXIT"
@@ -182,12 +192,15 @@ class Communicator:
             case (2, "CLEAR"):
                 servoNumber = 4
                 servoPosition = 210
+                self.flipper2Pos = 210
             case (2, "ENTER"):
                 servoNumber = 4
                 servoPosition = 0
+                self.flipper2Pos = 0
             case (2, "EXIT"):
                 servoNumber = 4
                 servoPosition = 110
+                self.flipper2Pos = 110
             case _:
                 print("Error: Invalid flipper number or position")
                 return
