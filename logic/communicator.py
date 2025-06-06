@@ -23,7 +23,7 @@ class Communicator:
             self.ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
             time.sleep(2)
         except serial.SerialException:
-            print("FOUT: Kan geen verbinding maken met de seriële poort.")
+            print("Error: No connection to serial port")
             sys.exit(1)
 
     def get_beam1_state(self):
@@ -67,7 +67,7 @@ class Communicator:
             while self.ser.in_waiting:
                 line = self.ser.readline().decode().strip()
                 if line:
-                    self.log(f"Ontvangen: {line}")
+                    self.log(f"Received: {line}")
 
                 # Beam sensors
                 if line == "b10":
@@ -97,13 +97,13 @@ class Communicator:
                         if newHeight is not None:
                             self.height = newHeight
                     except ValueError as ve:
-                        print(f"FOUT bij verwerken van hoogte: {ve}")
+                        print(f"Error with processing height: {ve}")
 
             # Always refresh Pusher 2 enable/disable
             #self.update_pusher2_state()
 
         except Exception as e:
-            print(f"FOUT: {e}")
+            print(f"Error: {e}")
 
     def rotateRotator(self, rotatorNumber, direction, degrees):
         # servo numbers: 1 = rotator 1, 7 = rotator 2
@@ -115,20 +115,20 @@ class Communicator:
             case 2:
                 servoNumber = 7
             case _:
-                print("FOUT: Ongeldige rotator nummer")
+                print("Error: Invalid rotator number")
                 return
 
-        if direction not in ["FW", "REV"]:
-            print("FOUT: Ongeldige draairichting")
+        if direction not in ["FWD", "REV"]:
+            print("Error: Invalid direction, must be 'FWD' or 'REV'")
             return
         
         if not (0 <= degrees <= 360):
-            print("FOUT: Ongeldige graden, moet tussen 0 en 360 liggen")
+            print("Error: Invalid degrees, must be between 0 and 360")
             return
 
         cmd = f"ROTATE {servoNumber} {direction} {degrees}"
         self.send_command(cmd)
-        print(f"Rotator {rotatorNumber} {direction} {degrees}° gestuurd")
+        print(f"Rotator {rotatorNumber} {direction} {degrees}° was sent")
 
     def movePusher(self, pusherNumber, direction, distance = None):
         # pusher numbers: 2 = pusher 1, 6 = pusher 2
@@ -142,24 +142,37 @@ class Communicator:
             case 2:
                 servoNumber = 6
             case _:
-                print("FOUT: Ongeldig pusher nummer")
+                print("Error: Invalid pusher number")
                 return
             
         if pusherNumber == 2 and self.flipper2Pos != 210:
-            print("FOUT: Flipper 2 moet eerst naar veilige positie (210) worden gezet")
+            print("Error: Flipper 2 is not in safe position.")
             return
         
-        if direction == "FW":
+        if direction == "FWD":
             if distance is None or distance < 0 or distance > PUSHER_MAX_DISTANCE:
-                print(f"FOUT: Ongeldige afstand, moet tussen 0 en {PUSHER_MAX_DISTANCE} mm liggen")
+                print(f"Error: Invalid distance for pusher {pusherNumber}, must be between 0 and {PUSHER_MAX_DISTANCE} mm")
                 return
             time_millis = int(distance / MM_PER_SECOND * 1000)
             cmd = f"SET {servoNumber} {direction} {time_millis}"
         elif direction == "REV" or direction == "STOP":
             cmd = f"SET {servoNumber} {direction}"
         else:
-            print("FOUT: Ongeldige richting")
+            print("Error: Invalid direction, must be 'FWD', 'REV' or 'STOP'")
             return
         
         self.send_command(cmd)
-        print(f"Pusher {pusherNumber} {direction} gestuurd")
+        print(f"Pusher {pusherNumber} {direction} was sent")
+
+    def moveFlipper(self, flipperNumber, position):
+        # flipper numbers: 3 = flipper 1, 4 = flipper 2
+        # position: either "CLEAR", "ENTER" or "EXIT"
+        servoNumber = None
+        match flipperNumber:
+            case 1:
+                servoNumber = 3
+            case 2:
+                servoNumber = 4
+            case _:
+                print("Error: Invalid flipper number")
+                return
