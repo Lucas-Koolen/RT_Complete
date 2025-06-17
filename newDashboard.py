@@ -120,7 +120,7 @@ class RealtimeDashboard(QWidget):
         length, width, height, shape, matched_id, match_ok, log, frame_with_overlay = detect_dimensions(frame, self.dataBase)
 
         # ─── Convert to QImage + QPixmap ────────────────────────────────────────
-        img_rgb = cv2.cvtColor(frame_with_overlay, cv2.COLOR_BGR2RGB)
+        img_rgb = cv2.cvtColor(frame_with_overlay, cv2.COLOR_GRAY2RGB)
         h, w, ch = img_rgb.shape
         bytes_per_line = ch * w
         qt_image = QImage(

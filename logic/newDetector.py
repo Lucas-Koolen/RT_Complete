@@ -14,6 +14,9 @@ def detect_dimensions(frame, dataBase: DatabaseConnector):
     global _last_dimensions, _last_detected_time
     log = ""
 
+    return_frame = frame.copy()  # Keep original frame for drawing contours
+    return_frame = cv2.cvtColor(return_frame, cv2.COLOR_BGR2GRAY)  # Convert to RGB for display
+
     try:
         # Optionally resize frame for faster processing
         scale = PROCESS_SCALE if PROCESS_SCALE > 0 else 1.0
@@ -29,10 +32,15 @@ def detect_dimensions(frame, dataBase: DatabaseConnector):
         # --- 1) Pre‐process color image exactly as in C++ (bilateral filter) ---
         filtered = cv2.bilateralFilter(proc, d=9, sigmaColor=75, sigmaSpace=75)
 
+        # make image binary
+        filtered = cv2.cvtColor(filtered, cv2.COLOR_BGR2GRAY)
+        _, filtered = cv2.threshold(filtered, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
         orig = filtered.copy()  # Keep original for drawing contours
 
         # --- 2) EDGE DETECTION FOR RECTANGLES (Canny) ---
-        gray_filt = cv2.cvtColor(filtered, cv2.COLOR_BGR2GRAY)
+        #gray_filt = cv2.cvtColor(filtered, cv2.COLOR_BGR2GRAY)
+        gray_filt = filtered  # Already in grayscale after thresholding
         edges = cv2.Canny(gray_filt, threshold1=50, threshold2=150)
 
         # --- 3) FIND CONTOURS & APPROXIMATE POLYGONS ---
@@ -84,13 +92,14 @@ def detect_dimensions(frame, dataBase: DatabaseConnector):
         # If we still have no dimensions, immediately return with a warning
         if not _last_dimensions:
             log = "⚠️ Geen geschikte rechthoek of cirkel gevonden"
-            return 0, 0, 0, Shape.INVALID, None, False, log, frame
+            return 0, 0, 0, Shape.INVALID, None, False, log, return_frame
 
         # --- 4) If we did detect a rectangle, we could also attempt CIRCLE DETECTION ---
         #    (only if you care about circles; otherwise you can skip this entire block)
 
         # Convert to gray & blur (similar to C++ before HoughCircles)
-        gray_circle = cv2.cvtColor(filtered, cv2.COLOR_BGR2GRAY)
+        #gray_circle = cv2.cvtColor(filtered, cv2.COLOR_BGR2GRAY)
+        gray_circle = filtered
         gray_circle = cv2.GaussianBlur(gray_circle, (9, 9), sigmaX=2, sigmaY=2)
 
         # HoughCircles parameters as in C++: (dp=1, minDist=rows/8, param1=100, param2=30, minRadius=5)
@@ -165,4 +174,4 @@ def detect_dimensions(frame, dataBase: DatabaseConnector):
 
     except Exception as e:
         log = f"❌ Fout tijdens detectie: {e}"
-        return 0, 0, 0, Shape.INVALID, None, False, log, frame
+        return 0, 0, 0, Shape.INVALID, None, False, log, return_frame
