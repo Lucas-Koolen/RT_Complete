@@ -15,8 +15,6 @@ def detect_dimensions(frame, dataBase: DatabaseConnector):
     log = ""
 
     try:
-        orig = frame.copy()
-
         # Optionally resize frame for faster processing
         scale = PROCESS_SCALE if PROCESS_SCALE > 0 else 1.0
         proc = (
@@ -25,8 +23,13 @@ def detect_dimensions(frame, dataBase: DatabaseConnector):
             else frame
         )
 
+        # median filter on image
+        proc = cv2.medianBlur(proc, 5)
+
         # --- 1) Pre‐process color image exactly as in C++ (bilateral filter) ---
         filtered = cv2.bilateralFilter(proc, d=9, sigmaColor=75, sigmaSpace=75)
+
+        orig = filtered.copy()  # Keep original for drawing contours
 
         # --- 2) EDGE DETECTION FOR RECTANGLES (Canny) ---
         gray_filt = cv2.cvtColor(filtered, cv2.COLOR_BGR2GRAY)
@@ -48,7 +51,7 @@ def detect_dimensions(frame, dataBase: DatabaseConnector):
                 rect = cv2.minAreaRect(approx)
                 (cx, cy), (w, h), angle = rect
                 area = w * h
-                if area < 50:
+                if area < 400:
                     continue
                 if area > max_area:
                     max_area = area

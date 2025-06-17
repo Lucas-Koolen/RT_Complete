@@ -3,6 +3,10 @@ import threading
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QObject, pyqtSignal, QTimer
 
+from logic import camera_module
+
+from hikvision_sdk.MvCameraControl_class import *
+
 from newDashboard import MainDashboard
 
 
@@ -13,22 +17,17 @@ class FrameEmitter(QObject):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = MainDashboard()
 
-    emitter = FrameEmitter()
-    emitter.frame_ready.connect(window.realtime_tab.update_frame)
+    cam = MvCamera()
 
-    from logic import camera_module
+    window = MainDashboard(cam)
 
-    def frame_callback(img):
-        emitter.frame_ready.emit(img)
-        return img  # geen bewerking
-
-    def start_camera():
-        camera_module.start_stream(callback=frame_callback)
-
-    QTimer.singleShot(100, lambda: threading.Thread(target=start_camera, daemon=True).start())
+    camera_module.start_stream(cam)
 
     window.show()
 
-    sys.exit(app.exec_())
+    result = app.exec_()
+    # shutdown nicely by stopping the camera stream
+    camera_module.stop_stream(cam)
+
+    sys.exit(result)

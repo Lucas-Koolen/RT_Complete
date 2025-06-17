@@ -28,13 +28,18 @@ from config.config import SERIAL_PORT, BAUD_RATE
 from logic.db_connector import DatabaseConnector
 from logic.communicator import Communicator
 
+from logic.camera_module import get_frame
+
 # ------------------------------------------------------------------------------
 # 1) First dashboard: “AVØA Realtime Dashboard”
 # ------------------------------------------------------------------------------
 
 class RealtimeDashboard(QWidget):
-    def __init__(self):
+    def __init__(self, cam):
         super().__init__()
+
+        self.cam = cam
+
         self.setWindowTitle("AVØA Realtime Dashboard")
         self.setGeometry(100, 100, 1920, 1080)
         self.setStyleSheet("background-color: #2f2f2f; color: white; font-size: 18px;")
@@ -85,12 +90,31 @@ class RealtimeDashboard(QWidget):
 
         self.dataBase = DatabaseConnector()
 
-    def update_frame(self, frame):
+        self.frame_timer = QTimer(self)
+        
+        self.frame_timer.setSingleShot(True)
+        self.frame_timer.timeout.connect(self.update_frame)
+        self.frame_timer.start(100)  # Kick off the first frame
+
+
+    def update_frame(self):
         """
         Call this method whenever you have a new OpenCV frame to display.
         Assumes detect_dimensions(frame) returns:
           length, width, height, matched_id, match_ok, log, frame_with_overlay
         """
+
+        if(self.cam is None):
+            print("❌ Camera is not initialized.")
+            self.frame_timer.start(100)  # Restart timer to try again
+            return
+
+        frame = get_frame(self.cam)
+
+        if frame is None:
+            print("⚠️ Geen frame ontvangen, probeer opnieuw.")
+            self.frame_timer.start(100)
+            return
 
         # ─── Dimension detection; overlay, etc. ─────────────────────────────────
         length, width, height, shape, matched_id, match_ok, log, frame_with_overlay = detect_dimensions(frame, self.dataBase)
@@ -129,6 +153,8 @@ class RealtimeDashboard(QWidget):
         else:
             self.match_label.setText("Match: geen")
             self.match_label.setStyleSheet("background-color: #cc3333; padding: 10px;")
+
+        self.frame_timer.start(100)
 
 
 # ------------------------------------------------------------------------------
@@ -396,10 +422,10 @@ class ManualControlDashboard(QWidget):
     def add_pusher_controls(self, servo):
         row = QHBoxLayout()
         time_input = QLineEdit()
-        time_input.setPlaceholderText("ms voor Forwards (Push away)")
+        time_input.setPlaceholderText("mm voor Forwards (Push away)")
         time_input.setStyleSheet("QLineEdit::placeholder { color: #ffcc80; }")
 
-        btn_fwd = QPushButton("Forwards (time)")
+        btn_fwd = QPushButton("Forwards (mm)")
         btn_rev = QPushButton("Backwards (auto-stop)")
         btn_stop = QPushButton("Stop")
 
@@ -493,13 +519,13 @@ class ManualControlDashboard(QWidget):
 # ------------------------------------------------------------------------------
 
 class MainDashboard(QTabWidget):
-    def __init__(self):
+    def __init__(self, cam):
         super().__init__()
         self.setWindowTitle("Combined Dashboard")
         self.resize(1600, 1000)
 
         # Create instances of each dashboard
-        self.realtime_tab = RealtimeDashboard()
+        self.realtime_tab = RealtimeDashboard(cam)
         self.manual_tab = ManualControlDashboard()
 
         # Add them as tabs
