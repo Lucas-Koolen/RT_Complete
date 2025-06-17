@@ -22,11 +22,12 @@ PROCESS_SCALE = 0.5  # resize factor for processing frames
 
 # =============[ CAMERA CONFIG ]============
 MM_PER_PIXEL = 0.052  # mm per pixel (handmatig bepaald)
-MATCH_TOLERANCE = 0.10  # 10% afwijking
+MATCH_TOLERANCE = 0.50  # 50% afwijking
 
 # =============[ PUSHER CONFIG ]============
-MM_PER_SECOND = 10  # mm per second
-PUSHER_MAX_DISTANCE = 100  # mm
+MM_PER_SECOND_PUSH_1 = 51.5  # mm per second calibrated for pusher 1
+MM_PER_SECOND_PUSH_2 = 56  # mm per second calibrated for pusher 2
+PUSHER_MAX_DISTANCE = 170  # mm
 
 # =============[ SERIAL COMMUNICATION ]============
 SERIAL_PORT = 'COM4'

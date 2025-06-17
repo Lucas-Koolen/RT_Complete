@@ -4,7 +4,7 @@ import sys
 
 from logic.newHeightSensor import update_height
 from config.config import SERIAL_PORT, BAUD_RATE
-from config.config import PUSHER_MAX_DISTANCE, MM_PER_SECOND
+from config.config import PUSHER_MAX_DISTANCE, MM_PER_SECOND_PUSH_1, MM_PER_SECOND_PUSH_2
 
 class Communicator:
 
@@ -125,15 +125,19 @@ class Communicator:
         # REV and STOP do not require use the distance parameter
         # command uses time instead of distance
         servoNumber = None
+        mmPerSecond = None
+
         match pusherNumber:
             case 1:
                 servoNumber = 2
+                mmPerSecond = MM_PER_SECOND_PUSH_1
             case 2:
                 servoNumber = 6
+                mmPerSecond = MM_PER_SECOND_PUSH_2
             case _:
                 print("Error: Invalid pusher number")
                 return
-            
+                        
         if pusherNumber == 2 and self.flipper2Pos != 210:
             print("Error: Flipper 2 is not in safe position.")
             return
@@ -142,7 +146,7 @@ class Communicator:
             if distance is None or distance < 0 or distance > PUSHER_MAX_DISTANCE:
                 print(f"Error: Invalid distance for pusher {pusherNumber}, must be between 0 and {PUSHER_MAX_DISTANCE} mm")
                 return
-            time_millis = int(distance / MM_PER_SECOND * 1000)
+            time_millis = int(distance / mmPerSecond * 1000)
             cmd = f"SET {servoNumber} {direction} {time_millis}"
         elif direction == "REV" or direction == "STOP":
             cmd = f"SET {servoNumber} {direction}"
