@@ -34,7 +34,9 @@ def detect_dimensions(frame, dataBase: DatabaseConnector):
 
         # make image binary
         filtered = cv2.cvtColor(filtered, cv2.COLOR_BGR2GRAY)
-        _, filtered = cv2.threshold(filtered, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        thresholdValue, filtered = cv2.threshold(filtered, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+        print(f"Threshold value used: {thresholdValue}")
 
         orig = filtered.copy()  # Keep original for drawing contours
 
