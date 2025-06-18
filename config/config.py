@@ -8,7 +8,7 @@ DB_CONFIG = {
 }
 
 TABLE_NAME = 'Objects'
-DB_STATUS_FILTER = 'unplaced'
+DB_STATUS_FILTER = 'unprocessed'
 
 # =============[ OBJECT DETECTION CONFIG ]============
 FRAME_WIDTH = 2592

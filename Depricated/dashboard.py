@@ -127,7 +127,7 @@ class RotationDashboard(QWidget):
                     self.serial.send_command(cmd)
                     self.log(f"⮞ {cmd}")
                     time.sleep(0.4)
-                self.db.mark_as_placed(match['commonId'])
+                self.db.mark_as_processed(match['commonId'])
                 self.auto_mode = False
                 self.auto_toggle.setChecked(False)
                 self.auto_toggle.setText("Start Auto Mode")
