@@ -1,6 +1,6 @@
 import pymysql
 from config.config import DB_CONFIG, TABLE_NAME, DB_STATUS_FILTER, MATCH_TOLERANCE
-from logic.shape import Shape
+from helpers.shape import Shape
 
 class DatabaseConnector:
     def __init__(self):

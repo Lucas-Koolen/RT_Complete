@@ -1,15 +1,15 @@
 import cv2
 import numpy as np
 from config.config import MM_PER_PIXEL, PROCESS_SCALE
-from logic.shape import Shape
-from logic.db_connector import DatabaseConnector
-from logic.communicator import Communicator
+from helpers.shape import Shape
+from interfaces.dbConnector import DatabaseConnector
+from interfaces.serialCommunicator import SerialCommunicator
 
 # Global variables (make sure these are initialized somewhere in your module)
 _last_dimensions = None
 _last_detected_time = 0.0
 
-def detect_dimensions(frame, dataBase: DatabaseConnector, communicator: Communicator):
+def detect_dimensions(frame, dataBase: DatabaseConnector, communicator: SerialCommunicator):
     global _last_dimensions, _last_detected_time
     log = ""
 

@@ -16,22 +16,22 @@ from PyQt5.QtWidgets import (
     QTabWidget,
 )
 
-from logic.detector import detect_dimensions
+from logic.shapeDetector import detect_dimensions
 from config.config import SERIAL_PORT, BAUD_RATE
 
-from logic.db_connector import DatabaseConnector
-from logic.communicator import Communicator
+from interfaces.dbConnector import DatabaseConnector
+from interfaces.serialCommunicator import SerialCommunicator
 
-from logic.movement_logic import MovementLogic
+from logic.movementLogic import MovementLogic
 
-from logic.camera_module import get_frame
+from interfaces.cameraInterface import get_frame
 
 # ------------------------------------------------------------------------------
 # 1) First dashboard: “AVØA Realtime Dashboard”
 # ------------------------------------------------------------------------------
 
 class RealtimeDashboard(QWidget):
-    def __init__(self, cam, communicator: Communicator):
+    def __init__(self, cam, communicator: SerialCommunicator):
         super().__init__()
 
         self.cam = cam
@@ -164,7 +164,7 @@ class RealtimeDashboard(QWidget):
 # ------------------------------------------------------------------------------
 
 class ManualControlDashboard(QWidget):
-    def __init__(self, communicator: Communicator):
+    def __init__(self, communicator: SerialCommunicator):
         super().__init__()
 
         self.l2_position = None  # Tracks position of L2 (servo 4)
@@ -521,7 +521,7 @@ class ManualControlDashboard(QWidget):
 # ------------------------------------------------------------------------------
 
 class MainDashboard(QTabWidget):
-    def __init__(self, cam, communicator: Communicator):
+    def __init__(self, cam, communicator: SerialCommunicator):
         super().__init__()
         self.setWindowTitle("Combined Dashboard")
         self.resize(1600, 1000)

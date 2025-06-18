@@ -3,13 +3,13 @@ import threading
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QObject, pyqtSignal, QTimer
 
-from logic import camera_module
+from interfaces import cameraInterface
 
 from hikvision_sdk.MvCameraControl_class import *
 
 from dashboard import MainDashboard
 
-from logic.communicator import Communicator
+from interfaces.serialCommunicator import SerialCommunicator
 
 
 class FrameEmitter(QObject):
@@ -22,17 +22,17 @@ if __name__ == "__main__":
 
     cam = MvCamera()
 
-    communicator = Communicator()
+    communicator = SerialCommunicator()
 
     window = MainDashboard(cam, communicator)
 
-    camera_module.start_stream(cam)
+    cameraInterface.start_stream(cam)
 
     window.show()
 
     result = app.exec_()
     # shutdown nicely by stopping the camera stream
-    camera_module.stop_stream(cam)
+    cameraInterface.stop_stream(cam)
     communicator.moveConveyor(1, "STOP")
     communicator.moveConveyor(2, "STOP")
     communicator.movePusher(1, "REV")

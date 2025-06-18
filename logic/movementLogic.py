@@ -1,11 +1,11 @@
-from logic.communicator import Communicator
+from interfaces.serialCommunicator import SerialCommunicator
 from config.config import FRAME_HEIGHT
 from config.config import MM_PER_SECOND_PUSH_1
 
 import time
 
 class MovementLogic:
-    def __init__(self, communicator: Communicator):
+    def __init__(self, communicator: SerialCommunicator):
         self.communicator = communicator
         self.state = "IDLE"
         self.rotatorWaitStartTime = 0
