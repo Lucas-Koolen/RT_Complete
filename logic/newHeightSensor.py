@@ -1,23 +1,25 @@
-average_height = None
-_raw_height_buffer = []
-MAX_BUFFER_SIZE = 10
+class HeightBuffer:
+    def __init__(self, max_size=10, scale=-1.305, offset=382.4, max_valid=100):
+        self.buffer = []
+        self.max_size = max_size
+        self.scale = scale
+        self.offset = offset
+        self.max_valid = max_valid
+        self.average = None
 
-# Nieuwe kalibratiefactoren (gebaseerd op jouw metingen)
-HEIGHT_SCALE = -1.305
-HEIGHT_OFFSET = 382.4
-HEIGHT_MAX_VALID = 100  # mm
+    def update(self, raw_height):
+        height = self.scale * raw_height + self.offset
+        if 0 <= height <= self.max_valid:
+            self.buffer.append(height)
+            if len(self.buffer) > self.max_size:
+                self.buffer.pop(0)
+            self.average = round(sum(self.buffer) / len(self.buffer), 1)
+        return self.average
 
-def get_latest_height():
-    return average_height
+    def get_latest(self):
+        return self.average
 
-def update_height(raw_height):
-    global average_height, _raw_height_buffer
-    height = HEIGHT_SCALE * raw_height + HEIGHT_OFFSET
-    if 0 <= height <= HEIGHT_MAX_VALID:
-        _raw_height_buffer.append(height)
-        if len(_raw_height_buffer) > MAX_BUFFER_SIZE:
-            _raw_height_buffer.pop(0)
-        average_height = round(
-            sum(_raw_height_buffer) / len(_raw_height_buffer), 1
-        )
-        return average_height
+# Example usage:
+# height_buffer = HeightBuffer()
+# height_buffer.update(raw_height)
+# latest = height_buffer.get_latest()

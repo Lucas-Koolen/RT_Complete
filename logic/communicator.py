@@ -2,7 +2,7 @@ import serial
 import time
 import sys
 
-from logic.newHeightSensor import update_height
+from logic.newHeightSensor import HeightBuffer
 from config.config import SERIAL_PORT, BAUD_RATE
 from config.config import PUSHER_MAX_DISTANCE, MM_PER_SECOND_PUSH_1, MM_PER_SECOND_PUSH_2
 
@@ -16,6 +16,7 @@ class Communicator:
         self.height = None
         self.dobotState = None
         self.flipper2Pos = None
+        self.heightSensor = HeightBuffer()
 
         # ─── Serial Connection ────────────────────────────────────────────────────
         try:
@@ -85,7 +86,7 @@ class Communicator:
                 elif line.startswith("HT "):
                     try:
                         raw_height = int(line.split()[1])
-                        newHeight = update_height(raw_height)
+                        newHeight = self.heightSensor.update(raw_height)
                         if newHeight is not None:
                             self.height = newHeight
                     except ValueError as ve:

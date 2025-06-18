@@ -1,6 +1,3 @@
-import sys
-import time
-import serial
 import cv2
 
 from PyQt5.QtCore import Qt, QTimer
@@ -20,9 +17,6 @@ from PyQt5.QtWidgets import (
 )
 
 from logic.newDetector import detect_dimensions
-from logic import camera_module
-from logic.newHeightSensor import update_height
-from logic.shape import Shape
 from config.config import SERIAL_PORT, BAUD_RATE
 
 from logic.db_connector import DatabaseConnector
@@ -35,10 +29,11 @@ from logic.camera_module import get_frame
 # ------------------------------------------------------------------------------
 
 class RealtimeDashboard(QWidget):
-    def __init__(self, cam):
+    def __init__(self, cam, communicator: Communicator):
         super().__init__()
 
         self.cam = cam
+        self.communicator = communicator
 
         self.setWindowTitle("AVØA Realtime Dashboard")
         self.setGeometry(100, 100, 1920, 1080)
@@ -117,7 +112,7 @@ class RealtimeDashboard(QWidget):
             return
 
         # ─── Dimension detection; overlay, etc. ─────────────────────────────────
-        length, width, height, shape, matched_id, match_ok, log, frame_with_overlay = detect_dimensions(frame, self.dataBase)
+        length, width, height, shape, matched_id, match_ok, log, frame_with_overlay = detect_dimensions(frame, self.dataBase, self.communicator)
 
         # ─── Convert to QImage + QPixmap ────────────────────────────────────────
         img_rgb = cv2.cvtColor(frame_with_overlay, cv2.COLOR_GRAY2RGB)
@@ -162,7 +157,7 @@ class RealtimeDashboard(QWidget):
 # ------------------------------------------------------------------------------
 
 class ManualControlDashboard(QWidget):
-    def __init__(self):
+    def __init__(self, communicator: Communicator):
         super().__init__()
 
         self.l2_position = None  # Tracks position of L2 (servo 4)
@@ -170,7 +165,7 @@ class ManualControlDashboard(QWidget):
         self.resize(1200, 900)
         self.setup_stylesheet()
 
-        self.serialCommunicator = Communicator()
+        self.serialCommunicator = communicator
 
         self.active_buttons = {}
         self.auto_stop_timers = {}
@@ -524,9 +519,11 @@ class MainDashboard(QTabWidget):
         self.setWindowTitle("Combined Dashboard")
         self.resize(1600, 1000)
 
+        communicator = Communicator()
+
         # Create instances of each dashboard
-        self.realtime_tab = RealtimeDashboard(cam)
-        self.manual_tab = ManualControlDashboard()
+        self.realtime_tab = RealtimeDashboard(cam, communicator)
+        self.manual_tab = ManualControlDashboard(communicator)
 
         # Add them as tabs
         self.addTab(self.realtime_tab, "Realtime")
