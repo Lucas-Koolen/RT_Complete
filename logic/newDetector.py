@@ -14,7 +14,6 @@ def detect_dimensions(frame, dataBase: DatabaseConnector, communicator: Communic
     log = ""
 
     return_frame = frame.copy()  # Keep original frame for drawing contours
-    return_frame = cv2.cvtColor(return_frame, cv2.COLOR_BGR2GRAY)  # Convert to RGB for display
 
     try:
         # Optionally resize frame for faster processing
@@ -64,10 +63,8 @@ def detect_dimensions(frame, dataBase: DatabaseConnector, communicator: Communic
                 length_mm = max(w, l) / scale * MM_PER_PIXEL
                 width_mm = min(w, l) / scale * MM_PER_PIXEL
 
-                #box_pts = cv2.boxPoints(largest_rect) / scale
-                #cv2.drawContours(orig, [box_pts.astype(np.int32)], 0, (0, 255, 0), 2)
-
                 rectangles.append({
+                    "rect": rect,
                     "center": (cx / scale, cy / scale),
                     "width_px": w / scale,
                     "length_px": l / scale,
@@ -105,10 +102,6 @@ def detect_dimensions(frame, dataBase: DatabaseConnector, communicator: Communic
                 if overlaps_rect:
                     continue
 
-                # Draw circle in red, center dot in blue
-                # cv2.circle(orig, (int(cir_cx / scale), int(cir_cy / scale)), int(cir_r / scale), (0, 0, 255), 2)
-                # cv2.circle(orig, (int(cir_cx / scale), int(cir_cy / scale)), 2, (255, 0, 0), 2)
-
                 # Save circle info (in pixels → mm)
                 circles.append({
                     "center": (cir_cx / scale, cir_cy / scale),
@@ -123,8 +116,6 @@ def detect_dimensions(frame, dataBase: DatabaseConnector, communicator: Communic
 
         if height is None:
             log = "⚠️ Geen hoogte gemeten"
-            # We still return the original image with rectangles/circles drawn
-            # For height=0, the return signature is (l, b, 0, None, False, log, orig)
             return 0, 0, 0, Shape.INVALID, None, False, log, return_frame
 
         h_mm = round(height, 1)
@@ -150,15 +141,18 @@ def detect_dimensions(frame, dataBase: DatabaseConnector, communicator: Communic
 
         if shape == Shape.BOX:
             l, w = rightMostShape["length_mm"], rightMostShape["width_mm"]
+            box_pts = cv2.boxPoints(rightMostShape["rect"]) / scale
+            cv2.drawContours(return_frame, [box_pts.astype(np.int32)], 0, (0, 255, 0), 2)
         elif shape == Shape.CYLINDER:
             l, w = rightMostShape["radius_mm"] * 2, rightMostShape["radius_mm"] * 2
+            cv2.circle(return_frame, (int(cir_cx / scale), int(cir_cy / scale)), int(cir_r / scale), (0, 0, 255), 2)
+            cv2.circle(return_frame, (int(cir_cx / scale), int(cir_cy / scale)), 2, (255, 0, 0), 2)
 
-        #matched_id, ok = None, False  # Placeholder: you can insert your own matching logic here
         matched_id, ok = dataBase.find_best_match(l, w, h_mm, shape)
 
-        log = f"✅ Vorm gedetecteerd: L={l:.1f} mm × B={w:.1f} mm, H={h_mm:.1f} mm, shape={shape.shapeToString()}, match={matched_id or 'geen'}"
+        log = f"✅ Vorm gedetecteerd: L={l:.1f} mm × W={w:.1f} mm, H={h_mm:.1f} mm, shape={shape.shapeToString()}, match={matched_id or 'geen'}"
 
-        return l, w, h_mm, shape, matched_id, ok, log, orig
+        return l, w, h_mm, shape, matched_id, ok, log, return_frame
 
     except Exception as e:
         log = f"❌ Fout tijdens detectie: {e}"
