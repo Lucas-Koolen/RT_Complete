@@ -56,11 +56,11 @@ class DatabaseConnector:
             # controleer toleranties beide richtingen (L-B / B-L matchen)
             for dims in [(l_db, w_db), (w_db, l_db)]:
                 l_match = self.is_within_tolerance(detected_l, dims[0])
-                b_match = self.is_within_tolerance(detected_w, dims[1])
+                w_match = self.is_within_tolerance(detected_w, dims[1])
                 shape_match = (shape == detected_shape)
                 h_match = self.is_within_tolerance(detected_h, h_db)
 
-                if l_match and b_match and shape_match:
+                if l_match and w_match and shape_match:
                     deviation = abs(detected_l - dims[0]) + abs(detected_w - dims[1]) + abs(detected_h - h_db)
                     if deviation < best_score:
                         best_score = deviation
