@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (
     QTabWidget,
 )
 
-from logic.newDetector import detect_dimensions
+from logic.detector import detect_dimensions
 from config.config import SERIAL_PORT, BAUD_RATE
 
 from logic.db_connector import DatabaseConnector

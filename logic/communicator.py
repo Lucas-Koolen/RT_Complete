@@ -2,7 +2,7 @@ import serial
 import time
 import sys
 
-from logic.newHeightSensor import HeightBuffer
+from logic.heightSensor import HeightBuffer
 from config.config import SERIAL_PORT, BAUD_RATE
 from config.config import PUSHER_MAX_DISTANCE, MM_PER_SECOND_PUSH_1, MM_PER_SECOND_PUSH_2
 

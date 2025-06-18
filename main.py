@@ -7,7 +7,7 @@ from logic import camera_module
 
 from hikvision_sdk.MvCameraControl_class import *
 
-from newDashboard import MainDashboard
+from dashboard import MainDashboard
 
 from logic.communicator import Communicator
 
