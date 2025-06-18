@@ -22,6 +22,8 @@ from config.config import SERIAL_PORT, BAUD_RATE
 from logic.db_connector import DatabaseConnector
 from logic.communicator import Communicator
 
+from logic.movement_logic import MovementLogic
+
 from logic.camera_module import get_frame
 
 # ------------------------------------------------------------------------------
@@ -34,6 +36,7 @@ class RealtimeDashboard(QWidget):
 
         self.cam = cam
         self.communicator = communicator
+        self.movement_logic = MovementLogic(communicator)
 
         self.setWindowTitle("AVØA Realtime Dashboard")
         self.setGeometry(100, 100, 1920, 1080)
@@ -112,7 +115,11 @@ class RealtimeDashboard(QWidget):
             return
 
         # ─── Dimension detection; overlay, etc. ─────────────────────────────────
-        length, width, height, shape, matched_id, match_ok, log, frame_with_overlay = detect_dimensions(frame, self.dataBase, self.communicator)
+        length, width, height, centerX, centerY, angle, shape, matched_id, match_ok, log, frame_with_overlay = detect_dimensions(frame, self.dataBase, self.communicator)
+
+        self.movement_logic.handle_movement(angle, centerX, centerY, width, length, height)
+
+        #print(f"Detected object with center at ({centerX}, {centerY})")
 
         # ─── Convert to QImage + QPixmap ────────────────────────────────────────
         img_rgb = cv2.cvtColor(frame_with_overlay, cv2.COLOR_BGR2RGB)
@@ -455,7 +462,7 @@ class ManualControlDashboard(QWidget):
         self.serialCommunicator.update_from_serial()
 
         if hasattr(self, "pusher2_buttons"):
-            state = self.serialCommunicator.get_flipper2_pos() == 210
+            state = self.serialCommunicator.get_flipper2_pos() == 200
             for btn in self.pusher2_buttons:
                 btn.setEnabled(state)
                 if not state:
@@ -514,12 +521,10 @@ class ManualControlDashboard(QWidget):
 # ------------------------------------------------------------------------------
 
 class MainDashboard(QTabWidget):
-    def __init__(self, cam):
+    def __init__(self, cam, communicator: Communicator):
         super().__init__()
         self.setWindowTitle("Combined Dashboard")
         self.resize(1600, 1000)
-
-        communicator = Communicator()
 
         # Create instances of each dashboard
         self.realtime_tab = RealtimeDashboard(cam, communicator)

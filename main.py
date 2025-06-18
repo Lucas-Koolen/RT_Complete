@@ -9,6 +9,8 @@ from hikvision_sdk.MvCameraControl_class import *
 
 from newDashboard import MainDashboard
 
+from logic.communicator import Communicator
+
 
 class FrameEmitter(QObject):
     """Forward camera frames safely to the GUI thread"""
@@ -20,7 +22,9 @@ if __name__ == "__main__":
 
     cam = MvCamera()
 
-    window = MainDashboard(cam)
+    communicator = Communicator()
+
+    window = MainDashboard(cam, communicator)
 
     camera_module.start_stream(cam)
 
@@ -29,5 +33,11 @@ if __name__ == "__main__":
     result = app.exec_()
     # shutdown nicely by stopping the camera stream
     camera_module.stop_stream(cam)
+    communicator.moveConveyor(1, "STOP")
+    communicator.moveConveyor(2, "STOP")
+    communicator.movePusher(1, "REV")
+    communicator.movePusher(2, "REV")
+    communicator.moveFlipper(1, "CLEAR")
+    communicator.moveFlipper(2, "CLEAR")
 
     sys.exit(result)

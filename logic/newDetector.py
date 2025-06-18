@@ -60,11 +60,12 @@ def detect_dimensions(frame, dataBase: DatabaseConnector, communicator: Communic
                 if area < 400:
                     continue
 
-                length_mm = max(w, l) / scale * MM_PER_PIXEL
-                width_mm = min(w, l) / scale * MM_PER_PIXEL
+                length_mm = l / scale * MM_PER_PIXEL
+                width_mm = w / scale * MM_PER_PIXEL
 
                 rectangles.append({
                     "rect": rect,
+                    "angle": angle,
                     "center": (cx / scale, cy / scale),
                     "width_px": w / scale,
                     "length_px": l / scale,
@@ -116,7 +117,7 @@ def detect_dimensions(frame, dataBase: DatabaseConnector, communicator: Communic
 
         if height is None:
             log = "⚠️ Geen hoogte gemeten"
-            return 0, 0, 0, Shape.INVALID, None, False, log, return_frame
+            return 0, 0, 0, 0, 0, 0, Shape.INVALID, None, False, log, return_frame
 
         h_mm = round(height, 1)
 
@@ -135,15 +136,38 @@ def detect_dimensions(frame, dataBase: DatabaseConnector, communicator: Communic
         
         if rightMostShape is None:
             log = "❌ No shape detected"
-            return 0, 0, 0, Shape.INVALID, None, False, log, return_frame
+            return 0, 0, 0, 0, 0, 0, Shape.INVALID, None, False, log, return_frame
         
-        l, w = None, None
+        l, w, angle = None, None, None
 
         if shape == Shape.BOX:
-            l, w = rightMostShape["length_mm"], rightMostShape["width_mm"]
+            box_pts_one = cv2.boxPoints(rightMostShape["rect"])
+            boundingBox = cv2.boundingRect(box_pts_one.astype(np.int32))
+            boundingBox
+            if (boundingBox[2] > boundingBox[3] and rightMostShape["width_px"] < rightMostShape["length_px"]) or (boundingBox[2] < boundingBox[3] and rightMostShape["width_px"] > rightMostShape["length_px"]):
+                l = rightMostShape["width_mm"]
+                w = rightMostShape["length_mm"]
+                angle = rightMostShape["angle"] + 90
+            else:
+                l = rightMostShape["length_mm"]
+                w = rightMostShape["width_mm"]
+                angle = rightMostShape["angle"]
+
+            if angle > 90:
+                angle = angle - 180
+            elif angle < -90:
+                angle = angle + 180
+
+            print(f"Detected box with angle: {angle}")
+            
             box_pts = cv2.boxPoints(rightMostShape["rect"]) / scale
             cv2.drawContours(return_frame, [box_pts.astype(np.int32)], 0, (0, 255, 0), 2)
+            #also draw bounding box
+            cv2.rectangle(return_frame, (int(boundingBox[0] / scale), int(boundingBox[1] / scale)), 
+                          (int((boundingBox[0] + boundingBox[2]) / scale), int((boundingBox[1] + boundingBox[3]) / scale)), 
+                          (255, 0, 0), 2)
         elif shape == Shape.CYLINDER:
+            angle = 0  # Not used for circles
             l, w = rightMostShape["radius_mm"] * 2, rightMostShape["radius_mm"] * 2
             cv2.circle(return_frame, (int(cir_cx / scale), int(cir_cy / scale)), int(cir_r / scale), (0, 0, 255), 2)
             cv2.circle(return_frame, (int(cir_cx / scale), int(cir_cy / scale)), 2, (255, 0, 0), 2)
@@ -152,8 +176,11 @@ def detect_dimensions(frame, dataBase: DatabaseConnector, communicator: Communic
 
         log = f"✅ Vorm gedetecteerd: L={l:.1f} mm × W={w:.1f} mm, H={h_mm:.1f} mm, shape={shape.shapeToString()}, match={matched_id or 'geen'}"
 
-        return l, w, h_mm, shape, matched_id, ok, log, return_frame
+        centerX = int(rightMostShape["center"][0] / scale)
+        centerY = int(rightMostShape["center"][1] / scale)
+
+        return l, w, h_mm, centerX, centerY, angle, shape, matched_id, ok, log, return_frame
 
     except Exception as e:
         log = f"❌ Fout tijdens detectie: {e}"
-        return 0, 0, 0, Shape.INVALID, None, False, log, return_frame
+        return 0, 0, 0, 0, 0, 0, Shape.INVALID, None, False, log, return_frame

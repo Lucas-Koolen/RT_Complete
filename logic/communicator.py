@@ -12,7 +12,9 @@ class Communicator:
         self.beam1State = None
         self.beam2State = None
         self.limit1State = None
+        self.pusher1Pos = None
         self.limit2State = None
+        self.pusher2Pos = None
         self.height = None
         self.dobotState = None
         self.flipper2Pos = None
@@ -35,8 +37,14 @@ class Communicator:
     def get_limit1_state(self):
         return self.limit1State
     
+    def get_pusher1_pos(self):
+        return self.pusher1Pos
+    
     def get_limit2_state(self):
         return self.limit2State
+    
+    def get_pusher2_pos(self):  
+        return self.pusher2Pos
     
     def get_height(self):
         return self.height
@@ -139,7 +147,7 @@ class Communicator:
                 print("Error: Invalid pusher number")
                 return
                         
-        if pusherNumber == 2 and self.flipper2Pos != 210:
+        if pusherNumber == 2 and self.flipper2Pos != 200:
             print("Error: Flipper 2 is not in safe position.")
             return
         
@@ -149,8 +157,16 @@ class Communicator:
                 return
             time_millis = int(distance / mmPerSecond * 1000)
             cmd = f"SET {servoNumber} {direction} {time_millis}"
+            if pusherNumber == 1:
+                self.pusher1Pos = self.pusher1Pos + distance if self.pusher1Pos is not None else distance
+            elif pusherNumber == 2:
+                self.pusher2Pos = self.pusher2Pos + distance if self.pusher2Pos is not None else distance
         elif direction == "REV" or direction == "STOP":
             cmd = f"SET {servoNumber} {direction}"
+            if pusherNumber == 1:
+                self.pusher1Pos = 0
+            elif pusherNumber == 2:
+                self.pusher2Pos = 0
         else:
             print("Error: Invalid direction, must be 'FWD', 'REV' or 'STOP'")
             return
@@ -190,22 +206,22 @@ class Communicator:
                 servoPosition = 0
             case (1, "ENTER"):
                 servoNumber = 3
-                servoPosition = 105
+                servoPosition = 110
             case (1, "EXIT"):
                 servoNumber = 3
-                servoPosition = 210
+                servoPosition = 185
             case (2, "CLEAR"):
                 servoNumber = 4
-                servoPosition = 210
-                self.flipper2Pos = 210
+                servoPosition = 200
+                self.flipper2Pos = 200
             case (2, "ENTER"):
                 servoNumber = 4
-                servoPosition = 0
-                self.flipper2Pos = 0
+                servoPosition = 10
+                self.flipper2Pos = 10
             case (2, "EXIT"):
                 servoNumber = 4
-                servoPosition = 110
-                self.flipper2Pos = 110
+                servoPosition = 100
+                self.flipper2Pos = 100
             case _:
                 print("Error: Invalid flipper number or position")
                 return
