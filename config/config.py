@@ -2,20 +2,35 @@
 DB_CONFIG = {
     'host': 'localhost',
     'port': 3306,
-    'user': 'root',
-    'password': 'password',
+    'user': 'rotator',
+    'password': 's!P30DtH0UVv!#',
     'database': 'pallet_db'
 }
 
 TABLE_NAME = 'Objects'
-DB_STATUS_FILTER = 'unplaced'
+DB_STATUS_FILTER = 'unprocessed'
+
+# =============[ OBJECT DETECTION CONFIG ]============
+FRAME_WIDTH = 2592
+FRAME_HEIGHT = 1944
+PIXEL_FORMAT = 0x02180014  # RGB8 Packed
+EXPOSURE_TIME = 15000.0
+GAIN = 10.0
+
+# Process scale factor to speed up detection
+PROCESS_SCALE = 0.5  # resize factor for processing frames
 
 # =============[ CAMERA CONFIG ]============
-PIXEL_TO_MM = 0.052  # mm per pixel (handmatig bepaald)
-TOLERANCE_PERCENTAGE = 0.10  # 10% afwijking
+MM_PER_PIXEL = 0.059  # mm per pixel (handmatig bepaald)
+MATCH_TOLERANCE = 0.50  # 50% afwijking
+
+# =============[ PUSHER CONFIG ]============
+MM_PER_SECOND_PUSH_1 = 51.5  # mm per second calibrated for pusher 1
+MM_PER_SECOND_PUSH_2 = 56  # mm per second calibrated for pusher 2
+PUSHER_MAX_DISTANCE = 250  # mm
 
 # =============[ SERIAL COMMUNICATION ]============
-SERIAL_PORT = 'COM3'
+SERIAL_PORT = 'COM4'
 BAUD_RATE = 9600
 SERIAL_TIMEOUT = 1  # seconden
 

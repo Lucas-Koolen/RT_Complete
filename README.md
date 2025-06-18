@@ -10,13 +10,13 @@ Een geavanceerd systeem voor het detecteren, herkennen en oriënteren van dozen 
 - Realtime camera feed + bounding box
 - L×B meting via beeldverwerking (OpenCV + Hikvision SDK)
 - Hoogte uitlezing via VL53L1X sensor op Arduino
-- Matcht doos tegen een MySQL-database (`status = 'unplaced'`)
+- Matcht doos tegen een MySQL-database (`status = 'unprocessed'`)
 - Houdt rekening met oriëntatie (ook omgewisselde L/B)
 
 ### ✅ Automatische Aansturing
 - Berekening van rotatiesequentie naar gewenste eindpositie
 - Seriële communicatie met Arduino
-- Doos wordt automatisch gemarkeerd als `placed` in database
+- Doos wordt automatisch gemarkeerd als `processed` in database
 
 ### ✅ Handmatige Bediening
 - Los tabblad voor handmatige motorsturing (pusher, draaitafel, etc.)
