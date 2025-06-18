@@ -96,7 +96,7 @@ def detect_dimensions(frame, dataBase: DatabaseConnector, communicator: Communic
                 for r in rectangles:
                     rx, ry = r["center"]
                     dist = np.hypot(rx - cir_cx, ry - cir_cy)
-                    if dist < max(r["width_px"], r["height_px"]) / 2 + cir_r:
+                    if dist < max(r["width_px"], r["length_px"]) / 2 + cir_r:
                         overlaps_rect = True
                         break
                 if overlaps_rect:
@@ -125,11 +125,11 @@ def detect_dimensions(frame, dataBase: DatabaseConnector, communicator: Communic
         # find object with lowest Y-center coordinate
         rightMostShape = None
         if rectangles:
-            rightMostShape = min(rectangles, key=lambda r: r["center"][1])
+            rightMostShape = max(rectangles, key=lambda r: r["center"][1])
             shape = Shape.BOX
         if circles:
-            rightMostCircle = min(circles, key=lambda c: c["center"][1])
-            if rightMostShape is None or rightMostCircle["center"][1] < rightMostShape["center"][1]:
+            rightMostCircle = max(circles, key=lambda c: c["center"][1])
+            if rightMostShape is None or rightMostCircle["center"][1] > rightMostShape["center"][1]:
                 rightMostShape = rightMostCircle
                 shape = Shape.CYLINDER
         
