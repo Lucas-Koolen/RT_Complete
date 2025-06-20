@@ -39,6 +39,18 @@ class DatabaseConnector:
         best_match = None
         best_score = float('inf')  # lagere score = betere match
 
+        # also sort detected dimensions
+        sorted_detected_dims = sorted([detected_l, detected_w, detected_h], reverse=True)
+        # find resulting spot of height dimension in sorted list
+        h_index = sorted_detected_dims.index(detected_h)
+        # handle value error if height is not in the list
+        if h_index == -1:
+            print(f"[DB ERROR] Height {h_db} not found in sorted dimensions {sorted_db_dims}.")
+            return None, False
+        
+        # create list for potential matches
+        potential_matches = []
+
         for box in candidates:
             l_db = float(box['length'])
             w_db = float(box['width'])
@@ -53,18 +65,32 @@ class DatabaseConnector:
             else:
                 shape = Shape.INVALID
 
-            # controleer toleranties beide richtingen (L-B / B-L matchen)
-            for dims in [(l_db, w_db), (w_db, l_db)]:
-                l_match = self.is_within_tolerance(detected_l, dims[0])
-                w_match = self.is_within_tolerance(detected_w, dims[1])
-                shape_match = (shape == detected_shape)
-                h_match = self.is_within_tolerance(detected_h, h_db)
+            # sort length, width and height from largest to smallest
+            sorted_db_dims = sorted([l_db, w_db, h_db], reverse=True)
 
-                if l_match and w_match and shape_match:
-                    deviation = abs(detected_l - dims[0]) + abs(detected_w - dims[1]) + abs(detected_h - h_db)
-                    if deviation < best_score:
-                        best_score = deviation
-                        best_match = box
+            match = True
+
+            for i in range(3):
+                if i == h_index:
+                    continue
+                if not self.is_within_tolerance(sorted_detected_dims[i], sorted_db_dims[i]):
+                    match = False
+                    break
+            # if we reach here, we have a potential match
+            if match and shape == detected_shape:
+                potential_matches.append((sorted_db_dims, sorted_detected_dims, box))
+            
+        deviation = 0
+
+        # go over potential matches and find the best one
+        for sorted_db_dims, sorted_detected_dims, box in potential_matches:
+            # calculate deviation for each dimension
+            for i in range(3):
+                deviation += abs(sorted_detected_dims[i] - sorted_db_dims[i])
+
+            if deviation < best_score:
+                best_score = deviation
+                best_match = box
 
         return best_match, best_match is not None
 

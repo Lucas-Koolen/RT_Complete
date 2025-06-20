@@ -1,5 +1,5 @@
 class HeightBuffer:
-    def __init__(self, max_size=10, scale=-1.305, offset=382.4, max_valid=100):
+    def __init__(self, max_size=1, scale=-0.9722, offset=342.22, max_valid=100):
         self.buffer = []
         self.max_size = max_size
         self.scale = scale
@@ -9,7 +9,9 @@ class HeightBuffer:
 
     def update(self, raw_height):
         height = self.scale * raw_height + self.offset
-        if 0 <= height <= self.max_valid:
+        if height <= self.max_valid:
+            if height < 0:
+                height = 0
             self.buffer.append(height)
             if len(self.buffer) > self.max_size:
                 self.buffer.pop(0)

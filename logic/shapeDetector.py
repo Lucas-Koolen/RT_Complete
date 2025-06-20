@@ -112,8 +112,8 @@ def detect_dimensions(frame, dataBase: DatabaseConnector, communicator: SerialCo
 
         # --- 5) COMBINE WITH HEIGHT SENSOR & LOGGING ---
         
-        #height = communicator.get_height()
-        height = 0  # For testing purposes, we set height to 0
+        height = communicator.get_height()
+        #height = 0  # For testing purposes, we set height to 0
 
         if height is None:
             log = "⚠️ Geen hoogte gemeten"
