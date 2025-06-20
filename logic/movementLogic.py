@@ -3,6 +3,7 @@ from config.config import FRAME_HEIGHT
 from config.config import MM_PER_SECOND_PUSH_1
 
 import time
+from math import sqrt
 
 class MovementLogic:
     def __init__(self, communicator: SerialCommunicator):
@@ -26,20 +27,19 @@ class MovementLogic:
                     self.communicator.moveConveyor(1, "STOP")
                     self.state = "PUSHING1"
             case "PUSHING1":
-                self.communicator.movePusher(1, "FWD", 10)
-                self.pusher1WaitStartTime = time.time_ns() // 1_000_000
-                self.pusher1WaitTime = 15 / MM_PER_SECOND_PUSH_1 * 1000  # convert to milliseconds
+                self.communicator.movePusher(1, "FWD", 250)
                 self.state = "WAIT_FOR_PUSHING1"
             case "WAIT_FOR_PUSHING1":
+                if objectCenterY > FRAME_HEIGHT / 2:
+                    #stop pusher 1
+                    distance = sqrt((objectWidth / 2) ** 2 + (objectLength / 2) ** 2)
+                    self.pusher1WaitTime = distance + 5 / MM_PER_SECOND_PUSH_1 * 1000  # convert to milliseconds
+                    self.communicator.movePusher(1, "REV")
+                    self.pusher1WaitStartTime = time.time_ns() // 1_000_000
+                    self.state = "WAIT_FOR_CLEARANCE"
+            case "WAIT_FOR_CLEARANCE":
                 if time.time_ns() // 1_000_000 - self.pusher1WaitStartTime > self.pusher1WaitTime:
-                    if objectCenterY > FRAME_HEIGHT / 2:
-                        #stop pusher 1
-                        self.pusher1WaitTime = self.communicator.pusher1Pos + 5 / MM_PER_SECOND_PUSH_1 * 1000  # convert to milliseconds
-                        self.communicator.movePusher(1, "REV")
-                        self.pusher1WaitStartTime = time.time_ns() // 1_000_000
-                        self.state = "ROTATING"
-                    else:
-                        self.state = "PUSHING1"  # retry pushing if object is still in pusher 1
+                    self.state = "ROTATING"
             case "ROTATING":
                 if angle < 0:
                     self.communicator.rotateRotator(1, angle, "REV")
@@ -49,7 +49,7 @@ class MovementLogic:
                 self.rotatorWaitStartTime = time.time_ns() // 1_000_000
                 self.state = "WAIT_FOR_ROTATION"
             case "WAIT_FOR_ROTATION":
-                if time.time_ns() // 1_000_000 - self.rotatorWaitStartTime > 1000 and time.time_ns() // 1_000_000 - self.pusher1WaitStartTime > self.pusher1WaitTime:
+                if time.time_ns() // 1_000_000 - self.rotatorWaitStartTime > 1000 and self.communicator.get_limit1_state():
                     self.state = "PUSHING2"
             case "PUSHING2":
                 self.communicator.movePusher(1, "FWD", 250)
