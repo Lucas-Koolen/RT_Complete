@@ -1,6 +1,6 @@
 from interfaces.serialCommunicator import SerialCommunicator
 from config.config import FRAME_HEIGHT
-from config.config import MM_PER_SECOND_PUSH_1
+from config.config import MM_PER_SECOND_PUSH_1, MM_PER_SECOND_PUSH_2
 
 import time
 from math import sqrt
@@ -87,7 +87,7 @@ class MovementLogic:
                         # if the height dimension is the length or width, we need to flip the object
                         self.needToFlip = True
                         # if width on top, rotate second table
-                        if self.heightDimension == objectWidth:
+                        if objectHeight == self.widthDimension:
                             self.needToRotateSecondTable = True
                         else:
                             self.needToRotateSecondTable = False
@@ -118,9 +118,9 @@ class MovementLogic:
                     self.communicator.moveFlipper(1, "ENTER")
                 self.state = "PUSHING2"
             case "PUSHING2":
-                self.communicator.movePusher(1, "FWD", 255)
+                self.communicator.movePusher(1, "FWD", 250)
                 self.communicator.moveConveyor(2, "FWD")
-                self.waitTime = 255 / MM_PER_SECOND_PUSH_1 * 1000
+                self.waitTime = 250 / MM_PER_SECOND_PUSH_1 * 1000
                 self.waitStartTime = time.time_ns() // 1_000_000
                 self.state = "WAIT_FOR_PUSHING2"
             case "WAIT_FOR_PUSHING2":
@@ -146,7 +146,7 @@ class MovementLogic:
             case "WAIT_FOR_CONVEYOR2":
                 if time.time_ns() // 1_000_000 - self.waitStartTime > 15000:
                     self.communicator.moveConveyor(2, "STOP")
-                    self.state = "IDLE"
+                    self.state = "PUSHING3"
             case "PUSHING3":
                 distance = self.distance + objectLength / 2
                 if self.needToRotateFirstTable:
@@ -154,6 +154,29 @@ class MovementLogic:
                 else:
                     distance -= objectLength / 2
                 self.communicator.movePusher(2, "FWD", distance)
-
+                self.waitStartTime = time.time_ns() // 1_000_000
+                self.waitTime = distance / MM_PER_SECOND_PUSH_2 * 1000  # convert to milliseconds
+                self.state = "WAIT_FOR_PUSHING4"
+            case "WAIT_FOR_PUSHING4":
+                if time.time_ns() // 1_000_000 - self.waitStartTime > self.waitTime:
+                    self.communicator.movePusher(2, "REV")
+                    self.state = "WAIT_FOR_CLEARANCE2"
+                    self.waitStartTime = time.time_ns() // 1_000_000
+            case "WAIT_FOR_CLEARANCE2":
+                if time.time_ns() // 1_000_000 - self.waitStartTime > 5000:
+                    self.state = "ROTATING_SECOND_TABLE"
+            case "ROTATING_SECOND_TABLE":
+                if self.needToRotateSecondTable:
+                    self.communicator.rotateRotator(2, 90, "FWD")
+                self.waitStartTime = time.time_ns() // 1_000_000
+                self.state = "WAIT_FOR_ROTATION2"
+            case "WAIT_FOR_ROTATION2":
+                if time.time_ns() // 1_000_000 - self.waitStartTime > 5000:
+                    self.communicator.movePusher(2, "FWD", 250)
+                    self.waitStartTime = time.time_ns() // 1_000_000
+            case "WAIT_FOR_PUSHING5":
+                if time.time_ns() // 1_000_000 - self.waitStartTime > 5000:
+                    self.communicator.movePusher(2, "REV")
+                    self.state = "IDLE"
             case "DONE":
                 print("Movement logic is done")
