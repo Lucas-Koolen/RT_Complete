@@ -32,10 +32,14 @@ class MovementLogic:
                     self.communicator.moveConveyor(1, "STOP")
                     self.state = "PUSHING1"
             case "PUSHING1":
+                self.waitStartTime = time.time_ns() // 1_000_000
                 self.communicator.movePusher(1, "FWD", 250)
                 self.state = "WAIT_FOR_PUSHING1"
             case "WAIT_FOR_PUSHING1":
                 if objectCenterY > FRAME_HEIGHT / 2:
+                    timeTaken = time.time_ns() // 1_000_000 - self.waitStartTime
+                    distanceTravelled = timeTaken / 1000 * MM_PER_SECOND_PUSH_1  # convert to seconds
+
                     #stop pusher 1
                     distance = sqrt((objectWidth / 2) ** 2 + (objectLength / 2) ** 2)
                     self.waitTime = distance + 5 / MM_PER_SECOND_PUSH_1 * 1000  # convert to milliseconds
@@ -43,24 +47,38 @@ class MovementLogic:
                     self.waitStartTime = time.time_ns() // 1_000_000
                     self.state = "WAIT_FOR_CLEARANCE"
             case "WAIT_FOR_CLEARANCE":
-                # find dimension that is closest to the target height
-                for dimension in [objectLength, objectWidth, objectHeight]:
-                    if abs(dimension - targetHeight) < abs(self.heightDimension - targetHeight):
-                        self.heightDimension = dimension
-
-                if self.heightDimension == objectWidth:
-                    # if the height dimension is the width, we need to rotate the object 90 degrees
-                    self.needToRotate90 = True
-                else:  
-                    self.needToRotate90 = False
-
-                if self.heightDimension == objectLength or self.heightDimension == objectWidth:
-                    # if the height dimension is the length or width, we need to flip the object
-                    self.needToFlip = True
-                else:
-                    self.needToFlip = False
-                
                 if time.time_ns() // 1_000_000 - self.waitStartTime > self.waitTime:
+                    # find dimension that is closest to the target height
+                    lengthDimension = 0
+                    widthDimension = 0
+
+                    if targetLength == 0 or targetWidth == 0 or targetHeight == 0:
+                        return
+
+                    for dimension in [objectLength, objectWidth, objectHeight]:
+                        if abs(dimension - targetLength) < abs(lengthDimension - targetLength):
+                            lengthDimension = dimension
+                    
+                    for dimension in [objectLength, objectWidth, objectHeight]:
+                        if abs(dimension - targetWidth) < abs(widthDimension - targetWidth) and dimension != lengthDimension:
+                            widthDimension = dimension
+
+                    for dimension in [objectLength, objectWidth, objectHeight]:
+                        if dimension != lengthDimension and dimension != widthDimension:
+                            self.heightDimension = dimension
+                            break
+
+                    if self.heightDimension == objectWidth:
+                        # if the height dimension is the width, we need to rotate the object 90 degrees
+                        self.needToRotate90 = True
+                    else:  
+                        self.needToRotate90 = False
+
+                    if self.heightDimension == objectLength or self.heightDimension == objectWidth:
+                        # if the height dimension is the length or width, we need to flip the object
+                        self.needToFlip = True
+                    else:
+                        self.needToFlip = False
                     self.state = "ROTATING"
             case "ROTATING":
                 if self.needToRotate90:
