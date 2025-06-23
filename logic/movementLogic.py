@@ -11,9 +11,15 @@ class MovementLogic:
         self.state = "IDLE"
         self.waitStartTime = 0
         self.waitTime = 0
+        self.lengthDimension = 0
+        self.widthDimension = 0
         self.heightDimension = 0
+        self.targetLength = 0
+        self.targetWidth = 0
+        self.targetHeight = 0
         self.needToFlip = False
-        self.needToRotate90 = False
+        self.needToRotateFirstTable = False
+        self.needToRotateSecondTable = False
 
     def handle_movement(self, angle, objectCenterX, objectCenterY, objectLength, objectWidth, objectHeight, targetLength, targetWidth, targetHeight):
 
@@ -49,39 +55,51 @@ class MovementLogic:
             case "WAIT_FOR_CLEARANCE":
                 if time.time_ns() // 1_000_000 - self.waitStartTime > self.waitTime:
                     # find dimension that is closest to the target height
-                    lengthDimension = 0
-                    widthDimension = 0
 
                     if targetLength == 0 or targetWidth == 0 or targetHeight == 0:
                         return
 
                     for dimension in [objectLength, objectWidth, objectHeight]:
-                        if abs(dimension - targetLength) < abs(lengthDimension - targetLength):
-                            lengthDimension = dimension
+                        if abs(dimension - targetLength) < abs(self.lengthDimension - targetLength):
+                            self.lengthDimension = dimension
                     
                     for dimension in [objectLength, objectWidth, objectHeight]:
-                        if abs(dimension - targetWidth) < abs(widthDimension - targetWidth) and dimension != lengthDimension:
-                            widthDimension = dimension
+                        if abs(dimension - targetWidth) < abs(self.widthDimension - targetWidth) and dimension != self.lengthDimension:
+                            self.widthDimension = dimension
 
                     for dimension in [objectLength, objectWidth, objectHeight]:
-                        if dimension != lengthDimension and dimension != widthDimension:
+                        if dimension != self.lengthDimension and dimension != self.widthDimension:
                             self.heightDimension = dimension
                             break
 
+                    self.targetLength = targetLength
+                    self.targetWidth = targetWidth
+                    self.targetHeight = targetHeight
+
                     if self.heightDimension == objectWidth:
                         # if the height dimension is the width, we need to rotate the object 90 degrees
-                        self.needToRotate90 = True
+                        self.needToRotateFirstTable = True
                     else:  
-                        self.needToRotate90 = False
+                        self.needToRotateFirstTable = False
 
                     if self.heightDimension == objectLength or self.heightDimension == objectWidth:
                         # if the height dimension is the length or width, we need to flip the object
                         self.needToFlip = True
+                        # if width on top, rotate second table
+                        if self.heightDimension == objectWidth:
+                            self.needToRotateSecondTable = True
+                        else:
+                            self.needToRotateSecondTable = False
                     else:
                         self.needToFlip = False
+                        if self.lengthDimension != objectLength:
+                            # if the length or width dimension is not the same as the object, we need to rotate the second table
+                            self.needToRotateSecondTable = True
+                        else:
+                            self.needToRotateSecondTable = False
                     self.state = "ROTATING"
             case "ROTATING":
-                if self.needToRotate90:
+                if self.needToRotateFirstTable:
                     angle += 90
 
                 if angle < 0:
@@ -125,7 +143,7 @@ class MovementLogic:
                     self.waitStartTime = time.time_ns() // 1_000_000
                     self.state = "WAIT_FOR_CONVEYOR2"
             case "WAIT_FOR_CONVEYOR2":
-                if time.time_ns() // 1_000_000 - self.waitStartTime > 1000:
+                if time.time_ns() // 1_000_000 - self.waitStartTime > 15000:
                     self.communicator.moveConveyor(2, "STOP")
                     self.state = "IDLE"
             case "DONE":
