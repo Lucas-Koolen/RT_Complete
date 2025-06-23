@@ -157,9 +157,7 @@ def detect_dimensions(frame, dataBase: DatabaseConnector, communicator: SerialCo
                 angle = angle - 180
             elif angle < -90:
                 angle = angle + 180
-
-            print(f"Detected box with angle: {angle}")
-            
+                            
             box_pts = cv2.boxPoints(rightMostShape["rect"]) / scale
             cv2.drawContours(return_frame, [box_pts.astype(np.int32)], 0, (0, 255, 0), 2)
             #also draw bounding box

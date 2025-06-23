@@ -79,15 +79,15 @@ class DatabaseConnector:
             # if we reach here, we have a potential match
             if match and shape == detected_shape:
                 potential_matches.append((sorted_db_dims, sorted_detected_dims, box))
-            
-        deviation = 0
 
         # go over potential matches and find the best one
         for sorted_db_dims, sorted_detected_dims, box in potential_matches:
             # calculate deviation for each dimension
+            deviation = 0.0
+
             for i in range(3):
                 deviation += abs(sorted_detected_dims[i] - sorted_db_dims[i])
-
+                
             if deviation < best_score:
                 best_score = deviation
                 best_match = box
