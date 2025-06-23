@@ -11,13 +11,24 @@ struct ServoAction {
   int active;
 };
 
-ServoAction servoActions[16];  // Assuming maximum 16 servos
+ServoAction servoActions[16];  // Max 16 servo's
 
-// --- Stopwaarden per servo ---
-#define SERVO_STOP_DEFAULT  365 // standaard
-#define SERVO_STOP_SERVO5   367  // Lopende Band 2
-#define SERVO_STOP_SERVO6   366  // Pusher 2
-#define SERVO_STOP_SERVO7   368  // Draaitafel 2
+struct FlipperMove {
+  int servoNum;
+  int startPulse;
+  int targetPulse;
+  unsigned long startTime;
+  unsigned long duration;
+  bool active;
+};
+
+FlipperMove flipperMoves[16];  // Max 16 flippers tegelijk
+
+// Stopwaarden
+#define SERVO_STOP_DEFAULT  365
+#define SERVO_STOP_SERVO5   367
+#define SERVO_STOP_SERVO6   366
+#define SERVO_STOP_SERVO7   368
 
 #define SERVO_PWM_MOVE      200
 #define POS_MIN             90
@@ -29,7 +40,6 @@ ServoAction servoActions[16];  // Assuming maximum 16 servos
 #define BEAM_SENSOR1_PIN    4    // NO (LOW = gebroken)
 #define BEAM_SENSOR2_PIN    5    // NO
 
-// --- PWM stopwaarden per servo-index ---
 int custom_pwm[9] = {
   SERVO_STOP_DEFAULT,  // 0 - Lopende Band 1
   SERVO_STOP_DEFAULT,  // 1 - Draaitafel 1
@@ -79,37 +89,13 @@ void setup() {
   Serial.println("READY");
 }
 
-
-void handleServoActions() {
-  for (int i = 0; i < 16; i++) {
-    if (servoActions[i].active == -1) {
-      // Pusher 1: servo 2 → stop als endstop D8 (HIGH)
-      if (i == 2 && digitalRead(PUSHER1_ENDSTOP_PIN) == HIGH) {
-        pwm.setPWM(i, 0, custom_pwm[i]);
-        servoActions[i].active = 0;
-      }
-      // Pusher 2: servo 6 → stop als endstop D9 (HIGH)
-      else if (i == 6 && digitalRead(PUSHER2_ENDSTOP_PIN) == HIGH) {
-        pwm.setPWM(i, 0, custom_pwm[i]);
-        servoActions[i].active = 0;
-      }
-    }
-    else if (servoActions[i].active == 1) {
-      // Andere servo’s stoppen na tijd
-      if (millis() - servoActions[i].startTime >= servoActions[i].duration) {
-        pwm.setPWM(i, 0, custom_pwm[i]);
-        servoActions[i].active = 0;
-      }
-    }
-  }
-}
-
 void loop() {
   updateHeight();
   checkBeamSensors();
   checkEndstops();
   handleSerial();
   handleServoActions();
+  handleFlipperMoves();
   delay(50);
 }
 
@@ -181,7 +167,6 @@ void processCommand(String cmd) {
   Serial.print("CMD: ");
   Serial.println(cmd);
 
-  // PUSHER CONTROLS
   if (cmd.startsWith("SET")) {
     int s1 = cmd.indexOf(' ');
     int s2 = cmd.indexOf(' ', s1 + 1);
@@ -198,44 +183,45 @@ void processCommand(String cmd) {
       action = cmd.substring(s2 + 1);
     }
 
-    
     if (action == "FWD") {
       if (servoNum == 2 || servoNum == 6) {
         pwm.setPWM(servoNum, 0, SERVO_PWM_MOVE);
         servoActions[servoNum] = { millis(), (unsigned long)(duration > 0 ? duration : 500), 1 };
-      }
-      else if (servoNum == 0 || servoNum == 5)
-      {
+      } else if (servoNum == 0 || servoNum == 5) {
         pwm.setPWM(servoNum, 0, 730 - SERVO_PWM_MOVE);
       }
     } else if (action == "REV") {
       if (servoNum == 2 || servoNum == 6) {
         pwm.setPWM(servoNum, 0, 730 - SERVO_PWM_MOVE);
         servoActions[servoNum].active = -1;
-      }
-      else if (servoNum == 0 || servoNum == 5)
-      {
+      } else if (servoNum == 0 || servoNum == 5) {
         pwm.setPWM(servoNum, 0, SERVO_PWM_MOVE);
       }
     } else if (action == "STOP") {
       pwm.setPWM(servoNum, 0, custom_pwm[servoNum]);
       servoActions[servoNum].active = 0;
     }
-    
   }
 
-  // FLIPPER CONTROLS
   else if (cmd.startsWith("POS")) {
     int s1 = cmd.indexOf(' ');
     int s2 = cmd.indexOf(' ', s1 + 1);
     int servoNum = cmd.substring(s1 + 1, s2).toInt();
     int degrees = cmd.substring(s2 + 1).toInt();
-    degrees = constrain(degrees, 0, 210);
-    int pulse = map(degrees, 0, 180, POS_MIN, POS_MAX);
-    pwm.setPWM(servoNum, 0, pulse);
+    degrees = constrain(degrees, 0, 180);
+    int targetPulse = map(degrees, 0, 180, POS_MIN, POS_MAX);
+
+    int currentPulse = custom_pwm[servoNum];
+    flipperMoves[servoNum] = {
+      servoNum,
+      currentPulse,
+      targetPulse,
+      millis(),
+      1500,
+      true
+    };
   }
 
-  // CALIBRATE END STOPS
   else if (cmd.startsWith("CAL")) {
     int s1 = cmd.indexOf(' ');
     int s2 = cmd.indexOf(' ', s1 + 1);
@@ -246,7 +232,6 @@ void processCommand(String cmd) {
     }
   }
 
-  // ROTATOR CONTROLS
   else if (cmd.startsWith("ROTATE")) {
     int s1 = cmd.indexOf(' ');
     int s2 = cmd.indexOf(' ', s1 + 1);
@@ -262,5 +247,41 @@ void processCommand(String cmd) {
     else return;
 
     servoActions[servoNum] = { millis(), (unsigned long)timeMs, true };
+  }
+}
+
+void handleServoActions() {
+  for (int i = 0; i < 16; i++) {
+    if (servoActions[i].active == -1) {
+      if (i == 2 && digitalRead(PUSHER1_ENDSTOP_PIN) == HIGH) {
+        pwm.setPWM(i, 0, custom_pwm[i]);
+        servoActions[i].active = 0;
+      } else if (i == 6 && digitalRead(PUSHER2_ENDSTOP_PIN) == HIGH) {
+        pwm.setPWM(i, 0, custom_pwm[i]);
+        servoActions[i].active = 0;
+      }
+    } else if (servoActions[i].active == 1) {
+      if (millis() - servoActions[i].startTime >= servoActions[i].duration) {
+        pwm.setPWM(i, 0, custom_pwm[i]);
+        servoActions[i].active = 0;
+      }
     }
+  }
+}
+
+void handleFlipperMoves() {
+  for (int i = 0; i < 16; i++) {
+    if (!flipperMoves[i].active) continue;
+
+    unsigned long elapsed = millis() - flipperMoves[i].startTime;
+    if (elapsed >= flipperMoves[i].duration) {
+      pwm.setPWM(i, 0, flipperMoves[i].targetPulse);
+      custom_pwm[i] = flipperMoves[i].targetPulse;
+      flipperMoves[i].active = false;
+    } else {
+      float t = (float)elapsed / flipperMoves[i].duration;
+      int interp = flipperMoves[i].startPulse + (flipperMoves[i].targetPulse - flipperMoves[i].startPulse) * t;
+      pwm.setPWM(i, 0, interp);
+    }
+  }
 }
