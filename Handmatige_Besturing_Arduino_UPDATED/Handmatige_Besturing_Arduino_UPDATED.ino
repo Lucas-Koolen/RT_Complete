@@ -208,7 +208,7 @@ void processCommand(String cmd) {
     int s2 = cmd.indexOf(' ', s1 + 1);
     int servoNum = cmd.substring(s1 + 1, s2).toInt();
     int degrees = cmd.substring(s2 + 1).toInt();
-    degrees = constrain(degrees, 0, 180);
+    degrees = constrain(degrees, 0, 210);
     int targetPulse = map(degrees, 0, 180, POS_MIN, POS_MAX);
 
     int currentPulse = custom_pwm[servoNum];

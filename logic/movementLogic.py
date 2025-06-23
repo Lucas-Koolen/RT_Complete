@@ -17,6 +17,7 @@ class MovementLogic:
         self.targetLength = 0
         self.targetWidth = 0
         self.targetHeight = 0
+        self.distance = 0
         self.needToFlip = False
         self.needToRotateFirstTable = False
         self.needToRotateSecondTable = False
@@ -44,7 +45,7 @@ class MovementLogic:
             case "WAIT_FOR_PUSHING1":
                 if objectCenterY > FRAME_HEIGHT / 2:
                     timeTaken = time.time_ns() // 1_000_000 - self.waitStartTime
-                    distanceTravelled = timeTaken / 1000 * MM_PER_SECOND_PUSH_1  # convert to seconds
+                    self.distance = timeTaken / 1000 * MM_PER_SECOND_PUSH_1  # convert to seconds
 
                     #stop pusher 1
                     distance = sqrt((objectWidth / 2) ** 2 + (objectLength / 2) ** 2)
@@ -138,7 +139,7 @@ class MovementLogic:
                     self.waitStartTime = time.time_ns() // 1_000_000
                     self.state = "WAIT_FOR_CONVEYOR2"
             case "WAIT_FOR_FLIP":
-                if time.time_ns() // 1_000_000 - self.waitStartTime > 1500:
+                if time.time_ns() // 1_000_000 - self.waitStartTime > 5000:
                     self.communicator.moveFlipper(1, "CLEAR")
                     self.waitStartTime = time.time_ns() // 1_000_000
                     self.state = "WAIT_FOR_CONVEYOR2"
@@ -146,5 +147,13 @@ class MovementLogic:
                 if time.time_ns() // 1_000_000 - self.waitStartTime > 15000:
                     self.communicator.moveConveyor(2, "STOP")
                     self.state = "IDLE"
+            case "PUSHING3":
+                distance = self.distance + objectLength / 2
+                if self.needToRotateFirstTable:
+                    distance -= objectWidth / 2
+                else:
+                    distance -= objectLength / 2
+                self.communicator.movePusher(2, "FWD", distance)
+
             case "DONE":
                 print("Movement logic is done")

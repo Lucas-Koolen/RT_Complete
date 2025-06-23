@@ -11,13 +11,11 @@ class SerialCommunicator:
     def __init__(self):
         self.beam1State = None
         self.beam2State = None
-        self.limit1State = None
-        self.pusher1Pos = None
-        self.limit2State = None
-        self.pusher2Pos = None
+        self.limit1State = True  # Assume limit switch is pressed initially
+        self.limit2State = True  # Assume limit switch is pressed initially
         self.height = None
         self.dobotState = None
-        self.flipper2Pos = None
+        self.flipper2Pos = 200  # Default position for flipper 2
         self.heightSensor = HeightBuffer()
 
         # ─── Serial Connection ────────────────────────────────────────────────────
@@ -37,14 +35,8 @@ class SerialCommunicator:
     def get_limit1_state(self):
         return self.limit1State
     
-    def get_pusher1_pos(self):
-        return self.pusher1Pos
-    
     def get_limit2_state(self):
         return self.limit2State
-    
-    def get_pusher2_pos(self):  
-        return self.pusher2Pos
     
     def get_height(self):
         return self.height
@@ -157,16 +149,8 @@ class SerialCommunicator:
                 return
             time_millis = int(distance / mmPerSecond * 1000)
             cmd = f"SET {servoNumber} {direction} {time_millis}"
-            if pusherNumber == 1:
-                self.pusher1Pos = self.pusher1Pos + distance if self.pusher1Pos is not None else distance
-            elif pusherNumber == 2:
-                self.pusher2Pos = self.pusher2Pos + distance if self.pusher2Pos is not None else distance
         elif direction == "REV" or direction == "STOP":
             cmd = f"SET {servoNumber} {direction}"
-            if pusherNumber == 1:
-                self.pusher1Pos = 0
-            elif pusherNumber == 2:
-                self.pusher2Pos = 0
         else:
             print("Error: Invalid direction, must be 'FWD', 'REV' or 'STOP'")
             return
