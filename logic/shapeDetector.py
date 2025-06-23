@@ -117,7 +117,7 @@ def detect_dimensions(frame, dataBase: DatabaseConnector, communicator: SerialCo
 
         if height is None:
             log = "⚠️ Geen hoogte gemeten"
-            return 0, 0, 0, 0, 0, 0, Shape.INVALID, None, False, log, return_frame
+            return 0, 0, 0, 0, 0, 0, Shape.INVALID, None, False, 0, 0, 0, log, return_frame
 
         h_mm = round(height, 1)
 
@@ -136,7 +136,7 @@ def detect_dimensions(frame, dataBase: DatabaseConnector, communicator: SerialCo
         
         if rightMostShape is None:
             log = "❌ No shape detected"
-            return 0, 0, 0, 0, 0, 0, Shape.INVALID, None, False, log, return_frame
+            return 0, 0, 0, 0, 0, 0, Shape.INVALID, None, False, 0, 0, 0, log, return_frame
         
         l, w, angle = None, None, None
 

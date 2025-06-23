@@ -80,6 +80,10 @@ class DatabaseConnector:
             if match and shape == detected_shape:
                 potential_matches.append((sorted_db_dims, sorted_detected_dims, box))
 
+        target_l = 0
+        target_w = 0
+        target_h = 0
+
         # go over potential matches and find the best one
         for sorted_db_dims, sorted_detected_dims, box in potential_matches:
             # calculate deviation for each dimension
@@ -91,8 +95,11 @@ class DatabaseConnector:
             if deviation < best_score:
                 best_score = deviation
                 best_match = box
+                target_l = float(box['length'])
+                target_w = float(box['width'])
+                target_h = float(box['height'])
 
-        return best_match, l_db, w_db, h_db, best_match is not None
+        return best_match, target_l, target_w, target_h, best_match is not None
 
     def is_within_tolerance(self, measured, reference):
         tolerance = reference * MATCH_TOLERANCE

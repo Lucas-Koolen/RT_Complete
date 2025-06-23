@@ -198,6 +198,11 @@ class SerialCommunicator:
     def moveFlipper(self, flipperNumber, position):
         # flipper numbers: 3 = flipper 1, 4 = flipper 2
         # position: either "CLEAR", "ENTER" or "EXIT"
+
+        if flipperNumber == 2 and not self.limit2State:
+            print("Error: Flipper 2 is not in safe position.")
+            return
+
         servoNumber = None
         servoPosition = None
         match flipperNumber, position:
@@ -209,7 +214,7 @@ class SerialCommunicator:
                 servoPosition = 110
             case (1, "EXIT"):
                 servoNumber = 3
-                servoPosition = 185
+                servoPosition = 190
             case (2, "CLEAR"):
                 servoNumber = 4
                 servoPosition = 200
@@ -220,8 +225,8 @@ class SerialCommunicator:
                 self.flipper2Pos = 10
             case (2, "EXIT"):
                 servoNumber = 4
-                servoPosition = 100
-                self.flipper2Pos = 100
+                servoPosition = 95
+                self.flipper2Pos = 95
             case _:
                 print("Error: Invalid flipper number or position")
                 return

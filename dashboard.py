@@ -104,14 +104,14 @@ class RealtimeDashboard(QWidget):
 
         if(self.cam is None):
             print("❌ Camera is not initialized.")
-            self.frame_timer.start(100)  # Restart timer to try again
+            self.frame_timer.start(20)  # Restart timer to try again
             return
 
         frame = get_frame(self.cam)
 
         if frame is None:
             print("⚠️ Geen frame ontvangen, probeer opnieuw.")
-            self.frame_timer.start(100)
+            self.frame_timer.start(20)
             return
 
         # ─── Dimension detection; overlay, etc. ─────────────────────────────────
@@ -156,7 +156,7 @@ class RealtimeDashboard(QWidget):
             self.match_label.setText("Match: geen")
             self.match_label.setStyleSheet("background-color: #cc3333; padding: 10px;")
 
-        self.frame_timer.start(100)
+        self.frame_timer.start(20)
 
 
 # ------------------------------------------------------------------------------
