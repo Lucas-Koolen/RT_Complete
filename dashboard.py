@@ -115,9 +115,9 @@ class RealtimeDashboard(QWidget):
             return
 
         # ─── Dimension detection; overlay, etc. ─────────────────────────────────
-        length, width, height, centerX, centerY, angle, shape, matched_id, match_ok, log, frame_with_overlay = detect_dimensions(frame, self.dataBase, self.communicator)
+        length, width, height, centerX, centerY, angle, shape, matched_id, match_ok, target_l, target_w, target_h, log, frame_with_overlay = detect_dimensions(frame, self.dataBase, self.communicator)
 
-        self.movement_logic.handle_movement(angle, centerX, centerY, width, length, height)
+        self.movement_logic.handle_movement(angle, centerX, centerY, length, width, height, target_l, target_w, target_h)
 
         #print(f"Detected object with center at ({centerX}, {centerY})")
 

@@ -13,7 +13,7 @@ class MovementLogic:
         self.pusher1WaitStartTime = 0
         self.pusher1WaitTime = 0
 
-    def handle_movement(self, angle, objectCenterX, objectCenterY, objectWidth, objectLength, objectHeight):
+    def handle_movement(self, angle, objectCenterX, objectCenterY, objectLength, objectWidth, objectHeight, targetLength, targetWidth, targetHeight):
         # switch case based on the current state
         match self.state:
             case "IDLE":

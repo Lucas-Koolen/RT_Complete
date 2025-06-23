@@ -157,7 +157,7 @@ def detect_dimensions(frame, dataBase: DatabaseConnector, communicator: SerialCo
                 angle = angle - 180
             elif angle < -90:
                 angle = angle + 180
-                            
+
             box_pts = cv2.boxPoints(rightMostShape["rect"]) / scale
             cv2.drawContours(return_frame, [box_pts.astype(np.int32)], 0, (0, 255, 0), 2)
             #also draw bounding box
@@ -170,14 +170,14 @@ def detect_dimensions(frame, dataBase: DatabaseConnector, communicator: SerialCo
             cv2.circle(return_frame, (int(cir_cx / scale), int(cir_cy / scale)), int(cir_r / scale), (0, 0, 255), 2)
             cv2.circle(return_frame, (int(cir_cx / scale), int(cir_cy / scale)), 2, (255, 0, 0), 2)
 
-        matched_id, ok = dataBase.find_best_match(l, w, h_mm, shape)
+        matched_id, target_l, target_w, target_h, ok = dataBase.find_best_match(l, w, h_mm, shape)
 
         log = f"✅ Vorm gedetecteerd: L={l:.1f} mm × W={w:.1f} mm, H={h_mm:.1f} mm, shape={shape.shapeToString()}, match={matched_id or 'geen'}"
 
         centerX = int(rightMostShape["center"][0] / scale)
         centerY = int(rightMostShape["center"][1] / scale)
 
-        return l, w, h_mm, centerX, centerY, angle, shape, matched_id, ok, log, return_frame
+        return l, w, h_mm, centerX, centerY, angle, shape, matched_id, ok, target_l, target_w, target_h, log, return_frame
 
     except Exception as e:
         log = f"❌ Fout tijdens detectie: {e}"

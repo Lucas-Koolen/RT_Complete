@@ -46,7 +46,7 @@ class DatabaseConnector:
         # handle value error if height is not in the list
         if h_index == -1:
             print(f"[DB ERROR] Height {h_db} not found in sorted dimensions {sorted_db_dims}.")
-            return None, False
+            return None, 0, 0, 0, False
         
         # create list for potential matches
         potential_matches = []
@@ -92,7 +92,7 @@ class DatabaseConnector:
                 best_score = deviation
                 best_match = box
 
-        return best_match, best_match is not None
+        return best_match, l_db, w_db, h_db, best_match is not None
 
     def is_within_tolerance(self, measured, reference):
         tolerance = reference * MATCH_TOLERANCE
