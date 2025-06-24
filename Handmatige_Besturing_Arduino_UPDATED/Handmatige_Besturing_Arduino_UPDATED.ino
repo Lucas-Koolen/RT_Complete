@@ -128,7 +128,10 @@ void checkEndstops() {
   bool current2 = digitalRead(PUSHER2_ENDSTOP_PIN) == HIGH;
 
   if (!lastEndstop1 && current1) {
-    pwm.setPWM(2, 0, custom_pwm[2]);
+    if (servoActions[2].active != 1) {
+      pwm.setPWM(2, 0, custom_pwm[2]);
+      servoActions[2].active = 0;  // Reset action state
+    }
     Serial.println("STOP2");
   }
   if (lastEndstop1 && !current1) {
@@ -136,7 +139,10 @@ void checkEndstops() {
   }
 
   if (!lastEndstop2 && current2) {
-    pwm.setPWM(6, 0, custom_pwm[6]);
+    if (servoActions[6].active != 1) {
+      pwm.setPWM(6, 0, custom_pwm[6]);
+      servoActions[6].active = 0;  // Reset action state
+    }
     Serial.println("STOP6");
   }
   if (lastEndstop2 && !current2) {
