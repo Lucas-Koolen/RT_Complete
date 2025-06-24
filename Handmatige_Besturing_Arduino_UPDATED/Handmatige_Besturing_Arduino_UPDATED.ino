@@ -96,7 +96,6 @@ void loop() {
   handleSerial();
   handleServoActions();
   handleFlipperMoves();
-  delay(50);
 }
 
 void updateHeight() {
