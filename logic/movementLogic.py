@@ -140,14 +140,16 @@ class MovementLogic:
                     self.state = "WAIT_FOR_FLIP"
                 else:
                     self.waitStartTime = time.time_ns() // 1_000_000
+                    self.waitTime = 10000
                     self.state = "WAIT_FOR_CONVEYOR2"
             case "WAIT_FOR_FLIP":
                 if time.time_ns() // 1_000_000 - self.waitStartTime > 5000:
                     self.communicator.moveFlipper(1, "CLEAR")
                     self.waitStartTime = time.time_ns() // 1_000_000
+                    self.waitTime = 6000
                     self.state = "WAIT_FOR_CONVEYOR2"
             case "WAIT_FOR_CONVEYOR2":
-                if time.time_ns() // 1_000_000 - self.waitStartTime > 15000:
+                if time.time_ns() // 1_000_000 - self.waitStartTime > self.waitTime:
                     self.communicator.moveConveyor(2, "STOP")
                     self.state = "PUSHING3"
             case "PUSHING3":
@@ -170,9 +172,8 @@ class MovementLogic:
                 if time.time_ns() // 1_000_000 - self.waitStartTime > self.waitTime:
                     self.communicator.movePusher(2, "REV")
                     self.state = "WAIT_FOR_CLEARANCE2"
-                    self.waitStartTime = time.time_ns() // 1_000_000
             case "WAIT_FOR_CLEARANCE2":
-                if time.time_ns() // 1_000_000 - self.waitStartTime > 5000:
+                if self.communicator.get_limit2_state():
                     self.state = "ROTATING_SECOND_TABLE"
             case "ROTATING_SECOND_TABLE":
                 if self.needToRotateSecondTable:
@@ -180,10 +181,10 @@ class MovementLogic:
                 self.waitStartTime = time.time_ns() // 1_000_000
                 self.state = "WAIT_FOR_ROTATION2"
             case "WAIT_FOR_ROTATION2":
-                if time.time_ns() // 1_000_000 - self.waitStartTime > 5000:
+                if time.time_ns() // 1_000_000 - self.waitStartTime > 500:
                     self.communicator.movePusher(2, "FWD", 250)
                     self.waitStartTime = time.time_ns() // 1_000_000
-                    self.waitTime = 5000  # wait for 5 seconds
+                    self.waitTime = 250 / MM_PER_SECOND_PUSH_2 * 1000
                     self.state = "WAIT_FOR_PUSHING5"
             case "WAIT_FOR_PUSHING5":
                 if time.time_ns() // 1_000_000 - self.waitStartTime > self.waitTime:
