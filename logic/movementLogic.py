@@ -121,9 +121,9 @@ class MovementLogic:
                     self.communicator.moveFlipper(1, "ENTER")
                 self.state = "PUSHING2"
             case "PUSHING2":
-                self.communicator.movePusher(1, "FWD", 250)
+                self.communicator.movePusher(1, "FWD", 255)
                 self.communicator.moveConveyor(2, "FWD")
-                self.waitTime = 250 / MM_PER_SECOND_PUSH_1 * 1000
+                self.waitTime = 255 / MM_PER_SECOND_PUSH_1 * 1000
                 self.waitStartTime = time.time_ns() // 1_000_000
                 self.state = "WAIT_FOR_PUSHING2"
             case "WAIT_FOR_PUSHING2":
@@ -132,16 +132,16 @@ class MovementLogic:
                     self.state = "WAIT_FOR_PUSHING3"
             case "WAIT_FOR_PUSHING3":
                 if self.communicator.get_limit1_state():
-                    self.state = "FLIPPING"
+                    if self.needToFlip:
+                        self.state = "FLIPPING"
+                    else:
+                        self.waitStartTime = time.time_ns() // 1_000_000
+                        self.waitTime = 10000
+                        self.state = "WAIT_FOR_CONVEYOR2"
             case "FLIPPING":
-                if self.needToFlip:
-                    self.communicator.moveFlipper(1, "EXIT")
-                    self.waitStartTime = time.time_ns() // 1_000_000
-                    self.state = "WAIT_FOR_FLIP"
-                else:
-                    self.waitStartTime = time.time_ns() // 1_000_000
-                    self.waitTime = 10000
-                    self.state = "WAIT_FOR_CONVEYOR2"
+                self.communicator.moveFlipper(1, "EXIT")
+                self.waitStartTime = time.time_ns() // 1_000_000
+                self.state = "WAIT_FOR_FLIP"
             case "WAIT_FOR_FLIP":
                 if time.time_ns() // 1_000_000 - self.waitStartTime > 5000:
                     self.communicator.moveFlipper(1, "CLEAR")
@@ -153,11 +153,7 @@ class MovementLogic:
                     self.communicator.moveConveyor(2, "STOP")
                     self.state = "PUSHING3"
             case "PUSHING3":
-                distance = self.distance + objectLength / 2
-                if self.needToRotateFirstTable:
-                    distance -= objectWidth / 2
-                else:
-                    distance -= objectLength / 2
+                distance = self.distance
 
                 self.waitStartTime = time.time_ns() // 1_000_000
                 if self.needToRotateSecondTable:
@@ -165,8 +161,8 @@ class MovementLogic:
                     self.waitTime = distance / MM_PER_SECOND_PUSH_2 * 1000  # convert to milliseconds
                     self.state = "WAIT_FOR_PUSHING4"
                 else:
-                    self.communicator.movePusher(2, "FWD", 250)
-                    self.waitTime = 250 / MM_PER_SECOND_PUSH_2 * 1000  # convert to milliseconds
+                    self.communicator.movePusher(2, "FWD", 255)
+                    self.waitTime = 255 / MM_PER_SECOND_PUSH_2 * 1000  # convert to milliseconds
                     self.state = "WAIT_FOR_PUSHING5"
             case "WAIT_FOR_PUSHING4":
                 if time.time_ns() // 1_000_000 - self.waitStartTime > self.waitTime:
@@ -182,9 +178,9 @@ class MovementLogic:
                 self.state = "WAIT_FOR_ROTATION2"
             case "WAIT_FOR_ROTATION2":
                 if time.time_ns() // 1_000_000 - self.waitStartTime > 500:
-                    self.communicator.movePusher(2, "FWD", 250)
+                    self.communicator.movePusher(2, "FWD", 255)
                     self.waitStartTime = time.time_ns() // 1_000_000
-                    self.waitTime = 250 / MM_PER_SECOND_PUSH_2 * 1000
+                    self.waitTime = 255 / MM_PER_SECOND_PUSH_2 * 1000
                     self.state = "WAIT_FOR_PUSHING5"
             case "WAIT_FOR_PUSHING5":
                 if time.time_ns() // 1_000_000 - self.waitStartTime > self.waitTime:

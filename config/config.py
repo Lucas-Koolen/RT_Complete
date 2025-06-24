@@ -27,7 +27,7 @@ MATCH_TOLERANCE = 0.15  # 15% afwijking
 # =============[ PUSHER CONFIG ]============
 MM_PER_SECOND_PUSH_1 = 53  # mm per second calibrated for pusher 1
 MM_PER_SECOND_PUSH_2 = 61  # mm per second calibrated for pusher 2
-PUSHER_MAX_DISTANCE = 250  # mm
+PUSHER_MAX_DISTANCE = 255  # mm
 
 # =============[ SERIAL COMMUNICATION ]============
 SERIAL_PORT = 'COM4'
