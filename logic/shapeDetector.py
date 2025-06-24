@@ -88,7 +88,7 @@ def detect_dimensions(frame, dataBase: DatabaseConnector, communicator: SerialCo
 
         circles = []
         if detected_circles is not None:
-            print(f"Detected {len(detected_circles[0])} circles")
+            #print(f"Detected {len(detected_circles[0])} circles")
             detected_circles = np.uint16(np.around(detected_circles))
             for vc in detected_circles[0, :]:
                 cir_cx, cir_cy, cir_r = vc
