@@ -24,7 +24,7 @@ class MovementLogic:
 
     def handle_movement(self, angle, objectCenterX, objectCenterY, objectLength, objectWidth, objectHeight, targetLength, targetWidth, targetHeight):
 
-        print(f"Handling movement with angle: {angle}, center: ({objectCenterX}, {objectCenterY}), dimensions: ({objectLength}, {objectWidth}, {objectHeight}), target: ({targetLength}, {targetWidth}, {targetHeight})")
+        #print(f"Handling movement with angle: {angle}, center: ({objectCenterX}, {objectCenterY}), dimensions: ({objectLength}, {objectWidth}, {objectHeight}), target: ({targetLength}, {targetWidth}, {targetHeight})")
         
         # switch case based on the current state
         match self.state:
@@ -55,49 +55,52 @@ class MovementLogic:
                     self.state = "WAIT_FOR_CLEARANCE"
             case "WAIT_FOR_CLEARANCE":
                 if time.time_ns() // 1_000_000 - self.waitStartTime > self.waitTime:
-                    # find dimension that is closest to the target height
-
                     if targetLength == 0 or targetWidth == 0 or targetHeight == 0:
                         return
 
-                    for dimension in [objectLength, objectWidth, objectHeight]:
-                        if abs(dimension - targetLength) < abs(self.lengthDimension - targetLength):
-                            self.lengthDimension = dimension
-                    
-                    for dimension in [objectLength, objectWidth, objectHeight]:
-                        if abs(dimension - targetWidth) < abs(self.widthDimension - targetWidth) and dimension != self.lengthDimension:
-                            self.widthDimension = dimension
+                    # Mapping van targetdimensies met labels
+                    remainingTargets = {
+                        "length": targetLength,
+                        "width": targetWidth,
+                        "height": targetHeight
+                    }
 
-                    for dimension in [objectLength, objectWidth, objectHeight]:
-                        if dimension != self.lengthDimension and dimension != self.widthDimension:
-                            self.heightDimension = dimension
-                            break
+                    # --- 1. Match objectLength ---
+                    bestMatch = min(remainingTargets.items(), key=lambda kv: abs(objectLength - kv[1]))
+                    setattr(self, f"{bestMatch[0]}Dimension", objectLength)
+                    del remainingTargets[bestMatch[0]]
 
+                    # --- 2. Match objectWidth ---
+                    bestMatch = min(remainingTargets.items(), key=lambda kv: abs(objectWidth - kv[1]))
+                    setattr(self, f"{bestMatch[0]}Dimension", objectWidth)
+                    del remainingTargets[bestMatch[0]]
+
+                    # --- 3. Overgebleven target wordt gekoppeld aan objectHeight ---
+                    remainingLabel = list(remainingTargets.keys())[0]
+                    setattr(self, f"{remainingLabel}Dimension", objectHeight)
+
+                    # Doelwaarden opslaan
                     self.targetLength = targetLength
                     self.targetWidth = targetWidth
                     self.targetHeight = targetHeight
 
-                    if self.heightDimension == objectWidth:
-                        # if the height dimension is the width, we need to rotate the object 90 degrees
+                    # ROTATIE- EN FLIP-LOGICA
+                    if objectHeight == self.widthDimension:
                         self.needToRotateFirstTable = True
-                    else:  
+                    else:
                         self.needToRotateFirstTable = False
 
                     if self.heightDimension == objectLength or self.heightDimension == objectWidth:
-                        # if the height dimension is the length or width, we need to flip the object
                         self.needToFlip = True
-                        # if width on top, rotate second table
-                        if objectHeight == self.widthDimension:
-                            self.needToRotateSecondTable = True
-                        else:
-                            self.needToRotateSecondTable = False
+                        self.needToRotateSecondTable = (objectHeight == self.widthDimension)
                     else:
                         self.needToFlip = False
-                        if self.lengthDimension != objectLength:
-                            # if the length or width dimension is not the same as the object, we need to rotate the second table
-                            self.needToRotateSecondTable = True
-                        else:
-                            self.needToRotateSecondTable = False
+                        self.needToRotateSecondTable = (self.lengthDimension != objectLength)
+
+                    # Debugoutput
+                    print(f"Logic determined: needToFlip={self.needToFlip}, needToRotateFirstTable={self.needToRotateFirstTable}, needToRotateSecondTable={self.needToRotateSecondTable}")
+                    print(f"Based on measurements: object: [{objectLength}, {objectWidth}, {objectHeight}], target: [{targetLength}, {targetWidth}, {targetHeight}], matching: [L:{self.lengthDimension}, W:{self.widthDimension}, H:{self.heightDimension}]")
+
                     self.state = "ROTATING"
             case "ROTATING":
                 if self.needToRotateFirstTable:
@@ -153,10 +156,16 @@ class MovementLogic:
                     distance -= objectWidth / 2
                 else:
                     distance -= objectLength / 2
-                self.communicator.movePusher(2, "FWD", distance)
+
                 self.waitStartTime = time.time_ns() // 1_000_000
-                self.waitTime = distance / MM_PER_SECOND_PUSH_2 * 1000  # convert to milliseconds
-                self.state = "WAIT_FOR_PUSHING4"
+                if self.needToRotateSecondTable:
+                    self.communicator.movePusher(2, "FWD", distance)
+                    self.waitTime = distance / MM_PER_SECOND_PUSH_2 * 1000  # convert to milliseconds
+                    self.state = "WAIT_FOR_PUSHING4"
+                else:
+                    self.communicator.movePusher(2, "FWD", 250)
+                    self.waitTime = 250 / MM_PER_SECOND_PUSH_2 * 1000  # convert to milliseconds
+                    self.state = "WAIT_FOR_PUSHING5"
             case "WAIT_FOR_PUSHING4":
                 if time.time_ns() // 1_000_000 - self.waitStartTime > self.waitTime:
                     self.communicator.movePusher(2, "REV")
@@ -174,8 +183,10 @@ class MovementLogic:
                 if time.time_ns() // 1_000_000 - self.waitStartTime > 5000:
                     self.communicator.movePusher(2, "FWD", 250)
                     self.waitStartTime = time.time_ns() // 1_000_000
+                    self.waitTime = 5000  # wait for 5 seconds
+                    self.state = "WAIT_FOR_PUSHING5"
             case "WAIT_FOR_PUSHING5":
-                if time.time_ns() // 1_000_000 - self.waitStartTime > 5000:
+                if time.time_ns() // 1_000_000 - self.waitStartTime > self.waitTime:
                     self.communicator.movePusher(2, "REV")
                     self.state = "IDLE"
             case "DONE":
