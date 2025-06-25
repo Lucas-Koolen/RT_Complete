@@ -121,9 +121,9 @@ class MovementLogic:
                     self.communicator.moveFlipper(1, "ENTER")
                 self.state = "PUSHING2"
             case "PUSHING2":
-                self.communicator.movePusher(1, "FWD", 255)
+                self.communicator.movePusher(1, "FWD", 263)
                 self.communicator.moveConveyor(2, "FWD")
-                self.waitTime = 255 / MM_PER_SECOND_PUSH_1 * 1000
+                self.waitTime = 263 / MM_PER_SECOND_PUSH_1 * 1000
                 self.waitStartTime = time.time_ns() // 1_000_000
                 self.state = "WAIT_FOR_PUSHING2"
             case "WAIT_FOR_PUSHING2":
