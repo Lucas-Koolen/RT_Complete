@@ -43,7 +43,7 @@ FlipperMove flipperMoves[16];  // Max 16 flippers tegelijk
 int custom_pwm[9] = {
   SERVO_STOP_DEFAULT,  // 0 - Lopende Band 1
   SERVO_STOP_DEFAULT,  // 1 - Draaitafel 1
-  SERVO_STOP_DEFAULT,  // 2 - Pusher 1
+  SERVO_STOP_SERVO5,   // 2 - Pusher 1
   SERVO_STOP_DEFAULT,  // 3 - L1 (positioneel)
   SERVO_STOP_DEFAULT,  // 4 - L2 (positioneel)
   SERVO_STOP_SERVO5,   // 5 - Lopende Band 2 (gekalibreerd)
