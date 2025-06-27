@@ -6,48 +6,61 @@ Een geavanceerd systeem voor het detecteren, herkennen en oriënteren van dozen 
 
 ## 🔧 Functionaliteiten
 
-### ✅ Live Detectie & Matching
-- Realtime camera feed + bounding box
-- L×B meting via beeldverwerking (OpenCV + Hikvision SDK)
-- Hoogte uitlezing via VL53L1X sensor op Arduino
-- Matcht doos tegen een MySQL-database (`status = 'unprocessed'`)
-- Houdt rekening met oriëntatie (ook omgewisselde L/B)
+### ✅ Live Detectie & Herkenning
+- Live camerabeeld met bounding boxes via OpenCV en Hikvision SDK  
+- Automatische extractie van lengte en breedte op basis van pixelverhouding  
+- Hoogtemeting via VL53L1X sensor gekoppeld aan Arduino  
+- Objectmatching tegen MySQL-database op basis van dimensies en status  
+- Flexibele herkenning van oriëntatievarianten (inclusief verwisselde L/B-richting)
 
-### ✅ Automatische Aansturing
-- Berekening van rotatiesequentie naar gewenste eindpositie
-- Seriële communicatie met Arduino
-- Doos wordt automatisch gemarkeerd als `processed` in database
+### ✅ Volledige Autonomie
+- Bepaling van benodigde rotatie- en flips via `rotate_logic.py`  
+- Seriële aansturing van servo's via `serialCommunicator.py`  
+- Zoekt naar dozen in database met status `unprocessed` voor succesvolle verwerking  
 
-### ✅ Handmatige Bediening
-- Los tabblad voor handmatige motorsturing (pusher, draaitafel, etc.)
-- Directe Arduino-commando’s via UI
-- Logging van commando's en status
+### ✅ Handmatige Besturing
+- Handmatig bedieningspaneel binnen de PyQt-dashboard interface  
+- Directe controle over conveyors, pushers, draaitafels en flippers  
+- Logging van alle verzonden commando’s en systeemfeedback in real-time  
+- Kalibratie en foutanalyse zonder autonome flow te starten
 
 ---
 
 ## 🗂 Projectstructuur
 
 ```bash
-RT_COMPLETE/
+RT_Complete-main/
 │
-├── main.py                  # Startpunt applicatie
-├── dashboard.py             # UI met auto & manual modus
+├── cameraInterface/
+│   └── cameraInterface.py       # Hikvision + OpenCV image capture
 │
 ├── config/
-│   └── config.py            # Instellingen (MySQL, COM, tolerantie)
+│   └── config.py                # COM-poort, database settings, schaal
 │
-├── logic/
-│   ├── detector.py          # Camera + LxB meting
-│   ├── height_sensor.py     # Hoogte uitlezing Arduino
-│   ├── db_connector.py      # MySQL verbinding & matching
-│   ├── rotation_logic.py    # Berekening rotatiesequentie
-│   └── serial_comm.py       # Seriële communicatie Arduino
+├── dashboard/
+│   ├── dashboard.py             # PyQt5 UI met knoppen & live feed
+│   ├── dashboard_elements.py    # UI-elementen (buttons, textboxes)
+│   └── dashboard_handler.py     # Event-afhandeling en logica
 │
-├── arduino/
-│   └── RotationSystem_Combined.ino  # 1 Arduino sketch voor alles
+├── interfaces/
+│   └── serialCommunicator.py    # Seriële communicatie met Arduino
 │
-├── hikvision_sdk/           # SDK-bestanden voor cameracontrole
-│   └── ...
+├── objectDetection/
+│   └── objectDetection.py       # Verwerking camera input naar objectinfo
 │
-└── .vscode/
-    └── launch.json          # Startconfiguratie voor VS Code
+├── objectProcessing/
+│   ├── objectProcessor.py       # Object class + rotatielogica
+│   └── objectQueue.py           # Wachtrij voor objecten
+│
+├── testing/
+│   └── testdashboard.py         # Alternatieve test-GUI
+│
+├── util/
+│   ├── dashboardUtils.py        # Logging helper
+│   ├── drawBox.py               # Tekent bounding boxes
+│   └── rotate_logic.py          # ROT-logica voor berekeningen
+│
+├── main.py                      # Startpunt van het systeem
+│
+└── arduino/
+    └── RotationSystem_Combined.ino  # Arduino sketch voor servo’s en sensors
